@@ -1,0 +1,30 @@
+{
+  "name": "dsh-market-prototype",
+  "version": "0.1.0",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/QT7-C23/DSH-Marketplace.git"
+  },
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "start": "node server/server.mjs",
+    "test": "node --test tests/state.test.mjs tests/server.test.mjs",
+    "verify": "node scripts/verify.mjs",
+    "package": "node integration/package.mjs",
+    "verify:package": "node integration/verify-package.mjs",
+    "test:browser": "node --test tests/browser.test.mjs",
+    "tokens": "node scripts/tokens.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  },
+  "dependencies": {
+    "fflate": "0.8.3",
+    "yaml": "2.9.1"
+  }
+}

@@ -1,0 +1,85 @@
+name: Resource submission / 资源投稿 / リソース提案
+description: Suggest a Plugin, Skill, MCP, Slash, Prompt, or Theme / 推荐六类资源 / 6 種類のリソースを提案
+title: "[Resource] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English / 中文 / 日本語. An Issue proposes a resource for review; it does not publish or install it.
+        此表用于推荐收录，提交后不会自动上架或安装。实际 Prompt 文件请按 catalog/README.md 通过 PR 提交。
+        このフォームは掲載の提案です。自動公開・インストールは行いません。Prompt ファイルは catalog/README.md に従い PR で提出してください。
+        Review guidance / 本项目审核说明 / 本プロジェクトの審査案内: [CONTRIBUTING.md](https://github.com/QT7-C23/DSH-Marketplace/blob/main/CONTRIBUTING.md)
+        External directories have their own policies; only this project's published guidance applies here. 外部目录规则仅供参考，请按本项目说明投稿。外部カタログの規則ではなく、本プロジェクトの案内に従ってください。
+  - type: dropdown
+    id: resource-type
+    attributes:
+      label: Resource type / 资源类型 / 種類
+      options:
+        - Plugin
+        - Skill
+        - MCP
+        - Slash
+        - Prompt
+        - Theme
+    validations:
+      required: true
+  - type: input
+    id: resource-name
+    attributes:
+      label: Resource name / 资源名称 / 名称
+    validations:
+      required: true
+  - type: textarea
+    id: source
+    attributes:
+      label: Source and version / 来源与版本 / 出典とバージョン
+      description: Original URL and release/commit; Slash needs its parent plugin. Original Prompts may say new contribution and give a version. 填原始链接与版本，Slash 附所属插件；原创 Prompt 可注明新投稿及版本。出典と版、Slash は親プラグイン。新規の自作 Prompt はその旨と版を記載。
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose and example / 用途与示例 / 用途と利用例
+      description: Explain the task and provide a short usage example. 说明解决的任务及使用例子。解決する課題と短い利用例を記載。
+    validations:
+      required: true
+  - type: textarea
+    id: attribution-license
+    attributes:
+      label: Author and license / 作者与许可 / 著作者とライセンス
+      description: Name the original author, your relationship, license, and license URL. If unknown, say so; review is required. 填原作者、您的关系和许可依据，未知请注明。原著作者、関係、ライセンスと根拠 URL、不明なら明記。
+    validations:
+      required: true
+  - type: textarea
+    id: documentation
+    attributes:
+      label: README and usage / README 与使用文档 / README と利用文書
+      description: Link the resource's own README or SKILL.md and its version. If none exists, say so. 填该资源自身文档和版本，无独立文档请注明。リソース自身の文書と版を記載。存在しない場合は明記。
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: Requirements and testing / 使用要求与验证 / 利用要件と検証
+      description: Environment, dependencies, permissions and costs. State the last verified step; untested is acceptable in a proposal. 说明环境、依赖、权限、费用及实际验证到哪一步；推荐阶段可写未测试。環境・依存・権限・費用と検証済みの段階を記載。提案時は未検証と明記できます。
+      placeholder: |
+        DSH range and exact tested version / DSH 声明范围与实测版本 / DSH 対応範囲と実測版
+        OS, Node.js, Web/TUI / 系统、Node.js、使用界面 / OS・Node.js・画面
+        Native interfaces or protocol + adapter versions / 原生接口或协议与适配器版本 / ネイティブ API またはプロトコル・アダプター版
+        Parent plugin, dependencies and conflicts / 父插件、依赖与冲突 / 親プラグイン・依存・競合
+        Author claim vs actual test / 作者声明与实测分别填写 / 作者の宣言と実測は分けて記載
+    validations:
+      required: true
+  - type: textarea
+    id: resource-evidence
+    attributes:
+      label: Type-specific evidence / 分类补充材料 / 種類別の補足資料
+      description: Use the examples for your resource type; skip irrelevant items. 按类型补充，不适用可省略。該当する種類の情報を補足し、対象外は省略できます。
+      placeholder: |
+        Plugin: package/manifest/patch and loading evidence / 发布包、声明与加载情况 / 配布物・宣言・読み込み結果
+        Skill: SKILL.md and referenced files / 正文与引用文件 / 本文と参照ファイル
+        MCP: transport and connection steps / 传输方式与连接步骤 / 転送方式と接続手順
+        Slash: parent plugin, syntax and example / 所属插件、语法与示例 / 親プラグイン・構文・例
+        Prompt: input, variables; model/result if tested / 输入、变量；如已测试附模型和结果 / 入力・変数、検証済みならモデルと結果
+        Theme: plugin or preset, parent, light/dark examples, apply/restore / 插件或配色文件、父插件、深浅示例、应用与恢复 / プラグインか配色ファイル、親、明暗の例、適用・復元
+        Optional: screenshot or recording links, redact private data / 可选截图或录屏，去除私人信息 / 任意の画像・録画、非公開情報は除去

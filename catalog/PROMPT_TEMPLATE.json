@@ -1,0 +1,13 @@
+{
+  "schema": 1,
+  "id": "your-prompt-id",
+  "type": "Prompt",
+  "title": "作品名称",
+  "summary": "它帮助使用者完成什么",
+  "version": "1.0.0",
+  "author": "your-github-name",
+  "language": "zh",
+  "license": "",
+  "body": "填写完整的提示词原文",
+  "url": ""
+}

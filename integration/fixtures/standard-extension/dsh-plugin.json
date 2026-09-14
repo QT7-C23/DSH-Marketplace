@@ -1,0 +1,12 @@
+{
+  "$schema": "https://dsh-std.dev/schema/dsh-plugin.json",
+  "manifestVersion": "0.15",
+  "id": "market.standard-test",
+  "name": "Marketplace standard test fixture",
+  "version": "1.0.0",
+  "facets": { "host": { "entry": "./index.mjs", "apiVersion": "v1alpha1" } },
+  "requires": { "contracts": [{ "apiVersion": "commands.dsh/v1alpha1", "kind": "CommandRuntime" }] },
+  "permissions": [],
+  "contributes": { "commands": [{ "id": "market.hello", "title": "Compatibility test command" }] },
+  "subscriptions": []
+}

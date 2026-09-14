@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "ux-ui-review",
+  "type": "Prompt",
+  "title": "产品交互建议",
+  "summary": "围绕导航和页面体验提出设计与测试建议。",
+  "version": "1.0.0",
+  "author": "devisasari",
+  "language": "en",
+  "license": "CC0-1.0",
+  "body": "I want you to act as a UX/UI developer. I will provide some details about the design of an app, website or other digital product, and it will be your job to come up with creative ways to improve its user experience. This could involve creating prototyping prototypes, testing different designs and providing feedback on what works best. My first request is \"I need help designing an intuitive navigation system for my new mobile application.\"",
+  "url": "https://github.com/f/prompts.chat/blob/eaab6b14a085f3b9e4461be90367fcd9a16d3204/prompts.csv",
+  "selectionReason": "围绕导航和页面体验提出设计与测试建议。",
+  "provenance": {
+    "repository": "f/prompts.chat",
+    "commit": "eaab6b14a085f3b9e4461be90367fcd9a16d3204",
+    "path": "prompts.csv",
+    "entry": "UX/UI Developer",
+    "sha256": "f3880529ab9638e4497d14c6d2777a95a0649664e3bde4535d810bd95704033a",
+    "licenseUrl": "https://github.com/f/prompts.chat/blob/eaab6b14a085f3b9e4461be90367fcd9a16d3204/LICENSE"
+  }
+}

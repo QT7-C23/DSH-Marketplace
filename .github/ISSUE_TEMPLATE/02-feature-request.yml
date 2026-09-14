@@ -1,0 +1,28 @@
+name: Feature request / 功能建议 / 機能提案
+description: Explain a user need and outcome / 说明用户需求和预期结果 / 利用者の課題と期待する結果を説明
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English / 中文 / 日本語. For usage questions, use Discussions. 使用问题请到 Discussions。使い方の質問は Discussions へ。
+        Focus on the task you want to complete; a technical design is not required. 说明想完成的任务即可，无需提供技术方案。技術設計の提案は不要です。
+  - type: textarea
+    id: problem
+    attributes:
+      label: User and problem / 用户与问题 / 利用者と課題
+      description: Who is affected, and what is difficult today? 谁在什么场景遇到困难？誰がどの場面で困っていますか？
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome / 预期结果 / 期待する結果
+      description: Give a concrete example of successful use. 描述一个成功使用的例子。利用が成功する具体例を記載。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Current workaround / 当前替代方式 / 現在の回避策
+      description: Optional; explain what works and what is missing. 可选，说明现有方法与不足。任意、既存の方法と不足点を記載。

@@ -1,0 +1,45 @@
+name: Resource removal / 资源移除 / 掲載取り下げ
+description: Request removal or attribution correction / 申请移除或署名修正 / 掲載取り下げ・帰属表示の修正を依頼
+title: "[Removal] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Authors, maintainers, and rights holders may request removal without alleging infringement. We will remove the listing after verification.
+        作者、维护者或权利人不希望资源被收录即可申请，无需先提出侵权指控；我们会在核实后移除条目。
+        著作者・メンテナー・権利者は、侵害の主張がなくても掲載取り下げを依頼できます。確認後、掲載を取りやめます。
+        This Issue is public. Do not attach identity documents, credentials, or private files. 本 Issue 公开，请勿提交证件、凭据或私人文件。身分証明書・認証情報・非公開ファイルは添付しないでください。
+  - type: dropdown
+    id: request
+    attributes:
+      label: Request / 申请类型 / 依頼内容
+      options:
+        - Remove listing / 移除条目 / 掲載取り下げ
+        - Correct attribution or license / 修正署名或许可 / 帰属表示・ライセンスの修正
+    validations:
+      required: true
+  - type: input
+    id: resource-name
+    attributes:
+      label: Resource name / 资源名称 / リソース名
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Resource and original source / 资源与原始来源 / リソースと原典
+      description: Provide the market entry URL or ID and the original source URL. 填市场条目链接或编号及原始来源链接。掲載 URL または ID と原典 URL を記載。
+    validations:
+      required: true
+  - type: textarea
+    id: relationship
+    attributes:
+      label: Your relationship / 您与资源的关系 / リソースとの関係
+      description: Explain your role; a public author profile or repository link can help us verify it. 说明作者、维护者或权利人身份，可附公开账户或仓库链接。立場を説明し、確認できる公開プロフィール等があれば記載。
+    validations:
+      required: true
+  - type: textarea
+    id: details
+    attributes:
+      label: Additional details / 补充说明 / 補足
+      description: Optional; specify a correction or affected versions if relevant. 可选，可补充修正内容或受影响版本。任意、修正内容や対象バージョンなど。

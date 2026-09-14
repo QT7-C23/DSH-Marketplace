@@ -1,0 +1,44 @@
+name: Bug report / 问题反馈 / 不具合報告
+description: Report a reproducible problem / 报告可复现问题 / 再現可能な不具合を報告
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English, 中文, 日本語 are welcome. Search existing issues before submitting.
+        请先搜索已有问题。既存の Issue を確認してください。
+        Do not include API keys, authentication URLs, or private data. 请勿公开密钥、认证地址或私人数据。認証情報や非公開データは記載しないでください。
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment / 运行环境 / 実行環境
+      description: Marketplace commit/version, DSH version, OS, Node.js, browser; write unknown if needed. 填写市场、DSH、系统、Node.js、浏览器版本，不清楚可注明。各バージョン、不明ならその旨を記載。
+      placeholder: "Marketplace commit: ...; DSH: ...; OS: ...; Node.js: ...; Browser: ..."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce / 复现步骤 / 再現手順
+      description: Include the resource name/version and whether this is the DSH market or standalone prototype. 说明资源及使用入口。対象リソースと操作した画面を記載。
+      placeholder: "1. Open ... / 打开 ... / 開く ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior / 预期行为 / 期待する動作
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior / 实际行为 / 実際の動作
+      description: Include the visible error and how often it occurs. 附错误提示及发生频率。エラー表示と発生頻度を記載。
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Logs or screenshots / 日志或截图 / ログ・スクリーンショット
+      description: Optional; remove secrets and private workspace content first. 可选，先删除敏感信息。任意、機密情報は除いてください。

@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "id": "commit-message-generator",
+  "type": "Prompt",
+  "title": "提交信息生成器",
+  "summary": "根据变更说明，生成 Conventional Commits 格式的提交信息。",
+  "version": "1.0.0",
+  "author": "mehmetalicayhan",
+  "language": "en",
+  "license": "CC0-1.0",
+  "body": "I want you to act as a commit message generator. I will provide you with information about the task and the prefix for the task code, and I would like you to generate an appropriate commit message using the conventional commit format. Do not write any explanations or other words, just reply with the commit message.",
+  "url": "https://github.com/f/prompts.chat/blob/eaab6b14a085f3b9e4461be90367fcd9a16d3204/prompts.csv",
+  "selectionReason": "输入和输出格式清楚，适合整理已有变更。",
+  "provenance": {
+    "repository": "f/prompts.chat",
+    "commit": "eaab6b14a085f3b9e4461be90367fcd9a16d3204",
+    "path": "prompts.csv",
+    "entry": "Commit Message Generator",
+    "sha256": "c028a72bc0e1029c1fe6c324ad4bab5e2b48acdb6749beca803d5d143ed19972",
+    "licenseUrl": "https://github.com/f/prompts.chat/blob/eaab6b14a085f3b9e4461be90367fcd9a16d3204/LICENSE"
+  }
+}

@@ -1,0 +1,11 @@
+export const TYPES = ['插件', 'Skill', 'MCP', 'Slash', 'Prompt', '主题'];
+export const ACTORS = { reader: '使用者', author: '创作者' };
+export const WEEKLY = '请根据以下记录整理一份简洁、客观的中文周报。\n\n报告周期：{{报告周期}}\n本周记录：{{本周记录}}\n下周计划：{{下周计划}}\n\n分为「本周进展」「问题与待确认事项」「下周计划」。只使用已提供的事实，不编造数据、负责人或日期。区分已完成、进行中与受阻事项，缺少信息时标注「待补充」。';
+const dsh = 'https://github.com/deepseek-ai/deepseek-harness/blob/c291e7961a515f6d7af9304e7fd1d257929aef26/';
+export const SEEDS = [
+  { id: 'weekly-prompt', type: 'Prompt', title: '把零散记录，整理成周报', summary: '保留真实进展，分清已完成、进行中和待解决。把时间留给工作本身。', author: 'DSH 共建样本', owner: 'seed', version: '0.1.0', source: '本项目自编', tag: '写作与表达', body: WEEKLY, requirements: '填写三项内容即可预览；发送仍由你决定。', url: '', icon: 'text', featured: true },
+  { id: 'plan-plugin', type: '插件', title: '规划模式', summary: '先梳理目标和步骤，再开始行动。为复杂任务留出思考与评审的空间。', author: 'DeepSeek', owner: 'seed', version: '固定提交样本', source: 'DSH 官方仓库', tag: '任务规划', body: '为 DSH 增加规划模式，包含 /plan 命令。需要配置规划指导文本。此处仅演示安装与管理流程，不改变你的 DSH。', requirements: '需要相应 DSH 宿主服务；实际版本兼容待验证。', url: dsh + 'packages/plan/plan-mode/README.md', icon: 'box' },
+  { id: 'internal-comms', type: 'Skill', title: '内部沟通助手', summary: '从项目进展到团队消息，按合适的方法整理信息，让表达更清楚。', author: 'Anthropic', owner: 'seed', version: '来源样本', source: '作者公开仓库', tag: '写作与表达', body: 'internal-comms 提供内部沟通方法，并引用 examples 目录中的配套资料。实际接入必须保留完整目录，不能只复制 SKILL.md。', requirements: '完整 Skill 目录；DSH 适配与实际调用尚未验证。', url: 'https://github.com/anthropics/skills/tree/main/skills/internal-comms', icon: 'spark' },
+  { id: 'filesystem', type: 'MCP', title: '文件系统工具', summary: '让 Agent 连接指定文件夹，查找文件、读取内容，获得任务所需的资料。', author: 'MCP Maintainers', owner: 'seed', version: '来源样本', source: '维护方公开仓库', tag: '工具与连接', body: '官方 filesystem 服务提供文件操作工具。连接前需要准备执行环境并选择允许访问的目录。它还包含写操作，不能因为示例只读取就当成只读服务。', requirements: 'Node.js、本地 MCP 服务、明确的目录权限；此处不启动服务。', url: 'https://github.com/modelcontextprotocol/servers/tree/main/src/filesystem', icon: 'link' },
+  { id: 'plan-command', type: 'Slash', title: '/plan', summary: '从输入框快速进入规划。一个清楚的入口，连接到插件提供的完整能力。', author: 'DeepSeek', owner: 'seed', version: '随所属插件', source: '规划模式插件', tag: '任务规划', body: '输入 /plan 进入规划；/plan off 退出。此命令由规划模式插件提供，不需要再安装一份相同能力。', requirements: '与规划模式插件共用安装；需要交互式命令入口。', parent: 'plan-plugin', url: dsh + 'packages/plan/plan-mode/README.md', icon: 'slash' }
+];
