@@ -4,11 +4,18 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { GitHubCredentials } from './github-credentials.mjs';
+import { GitHubCredentials, validateGitHubToken } from './github-credentials.mjs';
 import { createGitHubFetch, GitHubConnection } from './github-auth.mjs';
 import { createHandler } from '../community/http.mjs';
 
 const token = 'github_pat_' + 'synthetic_test_only_'.repeat(4);
+test('GitHub CLI OAuth access tokens use the same protected read boundary', () => {
+  const oauth = 'gho_' + 'synthetic_test_only_'.repeat(3);
+  assert.equal(validateGitHubToken(oauth), oauth);
+  assert.throws(() => validateGitHubToken(oauth + '\n'), /格式/);
+  const installation = 'ghs_' + 'synthetic_test_only_'.repeat(3);
+  assert.equal(validateGitHubToken(installation), installation);
+});
 function memoryStore() {
   let value = null;
   return { read: async () => value, save: async next => { value = next; }, remove: async () => { value = null; } };

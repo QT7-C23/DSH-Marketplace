@@ -1,14 +1,18 @@
 import { createHash } from 'node:crypto';
 import { githubFetch } from './github-auth.mjs';
 
+export function isTransientReadError(error) {
+  return error.name === 'TimeoutError' || ['UND_ERR_CONNECT_TIMEOUT', 'ECONNRESET', 'UND_ERR_SOCKET', 'EAI_AGAIN', 'ETIMEDOUT'].includes(error.cause?.code);
+}
+
 /** Fixed upstream domains; a source manifest never supplies an arbitrary fetch address. */
 export async function readBytes(url, request = githubFetch) {
   const target = new URL(url);
   if (target.protocol !== 'https:' || target.username || target.password || target.port || !['api.github.com', 'raw.githubusercontent.com', 'registry.npmjs.org', 'registry.modelcontextprotocol.io'].includes(target.hostname)) throw Error('不支持的来源地址');
   try { return await requestBytes(url, request); }
   catch (error) {
-    if (error.name !== 'TimeoutError' && error.cause?.code !== 'UND_ERR_CONNECT_TIMEOUT') throw error;
-    // One fresh attempt for a timed out public GET; HTTP and integrity failures are not retried.
+    if (!isTransientReadError(error)) throw error;
+    // One fresh attempt after a transient public GET failure; HTTP, cancellation and integrity failures are not retried.
     return requestBytes(url, request);
   }
 }
@@ -29,6 +33,19 @@ async function requestBytes(url, request) {
   return Buffer.concat(chunks);
 }
 export async function readUpstream(url, request = githubFetch) { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await readBytes(url, request))); }
+/** Raw delivery and the Git blob API address the same immutable bytes, never a moving branch. */
+export async function readPinnedSkillBytes(url, file, bundle, read = readBytes) {
+  let bytes;
+  try { bytes = await read(url); }
+  catch (error) {
+    if (!isTransientReadError(error)) throw error;
+    const data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(await read(`https://api.github.com/repos/${bundle.repository}/git/blobs/${file.sha}`)));
+    if (data.encoding !== 'base64' || typeof data.content !== 'string') throw Error('Skill 文件编码不支持');
+    bytes = Buffer.from(data.content, 'base64');
+  }
+  try { return verifySkillBytes(file, bytes); }
+  catch { throw Object.assign(Error('Skill 文件校验失败'), { code: 'SKILL_INTEGRITY' }); }
+}
 export async function readSkillBlob(file, read = readUpstream) {
   const data = await read(`https://api.github.com/repos/anthropics/skills/git/blobs/${file.sha}`);
   if (data.encoding !== 'base64' || typeof data.content !== 'string') throw Error('Skill 文件编码不支持');

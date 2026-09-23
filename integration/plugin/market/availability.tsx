@@ -37,7 +37,7 @@ export function presenceOf(item: Resource, availability: Availability): PluginPr
 export function ResourceReadiness({ item, availability }: { item: Resource; availability: Availability }) {
   const { t } = useLanguage();
   const presence = presenceOf(item, availability);
-  const key = item.status === 'sample' ? 'sample' : item.type === 'Prompt' ? 'readyPrompt' : item.type === 'Skill' ? 'readySkill' : item.type === 'MCP' ? 'readyMCP' : item.type === '主题' ? 'readyTheme' : presence?.detected ? 'hostDetected' : availability.error || !availability.data?.complete ? 'hostUnknown' : presence ? 'hostNotDetected' : 'hostUnknown';
+  const key = item.status === 'sample' ? 'sample' : item.type === 'Prompt' ? 'readyPrompt' : item.type === 'Skill' ? 'readySkill' : item.type === 'MCP' ? 'readyMCP' : presence?.detected ? 'hostDetected' : availability.error || !availability.data?.complete ? 'hostUnknown' : presence ? 'hostNotDetected' : item.type === '主题' ? 'readyTheme' : 'hostUnknown';
   return <span className="resource-readiness" data-detected={presence?.detected || undefined}>{t(key)}</span>;
 }
 export function HostPresence({ item, availability }: { item: Resource; availability: Availability }) {

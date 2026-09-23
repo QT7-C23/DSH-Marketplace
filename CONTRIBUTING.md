@@ -4,99 +4,117 @@
 
 ## English
 
-Use the [Issue forms](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose) for bugs, features, resource suggestions, or removal requests. General questions belong in [Discussions](https://github.com/QT7-C23/DSH-Marketplace/discussions). You may write in English, Chinese, or Japanese. An Issue does not automatically publish a resource.
+Use the [Issue forms](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose) for bugs, features, resource proposals and author opt-outs. English, Chinese and Japanese are welcome. There is no marketplace account; GitHub handles contributions. An Issue or exported file is not publication.
 
-For a PR, fork the repository, make a focused change, and complete the PR template. Use `type: short description` for commit messages and PR titles: `feat`, `fix`, `docs`, `test`, `refactor`, or `chore`, for example `docs: clarify resource removal requests`. Link related issues, explain observable changes, report `npm run verify` results and limitations, and include screenshots for visible changes. See [Repository Guidelines](AGENTS.md) and [setup](README.md#quick-start).
+For code or documentation, make a focused PR and complete its template. Use `type: short description` for commits and PR titles: `feat`, `fix`, `docs`, `test`, `refactor`, `chore`. This is our convention, not a claim about an inherited repository history. Explain observable changes, related issues, verification and limitations; include UI evidence where relevant. See [setup](README.md#quick-start) and [repository guidelines](AGENTS.md).
 
-Prompt files follow [catalog/README.md](catalog/README.md) and belong in `catalog/prompts/<id>.json`. Run `node catalog/build.mjs`, then `npm run verify`. Other resource suggestions must identify their original author, source, version, license evidence, requirements, and actual validation; installation and compatibility are not implied by listing.
+### Propose, review, merge, synchronize
 
-### Resource review
+1. Describe the task, original author, source/version, license evidence, usage and known limitations. Explain forks and adaptations. Unknown details can be stated in an Issue; executable metadata is optional at this proposal stage.
+2. Generic UI JSON exports contain proposal fields only. Maintainers verify attribution and permission, then complete the type-specific bindings below. Do not import/export a reviewed entry through that editor expecting executable fields to survive.
+3. Put Prompts in `catalog/prompts/<id>.json`; put reviewed Plugin, Skill, MCP, Slash and Theme entries in `catalog/resource-entries.json`. Follow the [catalog guide and examples](catalog/README.md).
+4. Run `node catalog/build.mjs`, then `npm run verify`. Include the source files and generated `catalog/index.json` and `catalog/registry.json` in the reviewed PR. Do not edit indexes by hand.
+5. After merge into `main`, the community adapter reads the index at a fixed commit and verifies its bytes. Clients pick it up on successful manual sync or the six-hour automatic check. Failed scans keep the old snapshot. Unmerged proposals are never admitted.
 
-Our scope is plugins, Skills, MCP, Slash, Prompts and Themes. External contribution guides inform how we explain submissions; their admission rules do not govern this marketplace. We set no minimum repository age, Stars, commit count, mandatory Topic, or fixed three-entry PR limit. Keep submissions focused; similar resources can coexist when their differences are explained. Inactivity alone does not establish that a stable resource is unusable.
-
-All proposals should identify the task, original author, content/source, version, sharing permission, usage instructions and known limitations. Unknown information can be stated in an Issue; missing attribution or permission must be resolved before content is distributed. Descriptions should match the resource, and forks or adaptations must explain their origin and changes.
-
-| Type | Information needed for review |
+| Type | Binding required before public admission |
 |---|---|
-| Plugin | Published package or source, target DSH/OS versions, dependencies and configuration. A claimed official bundle needs its manifest and patch; `dsh.client` alone is not activation evidence. Describe internal modules or client-only components as such. |
-| Skill | Complete SKILL.md and referenced files, task scope, runtime needs and an invocation example. |
-| MCP | Publisher, server definition, transport, startup/connection instructions, credentials needed and external service costs. Never include actual secrets. |
-| Slash | Parent plugin, command syntax, parameters and expected behavior; it shares the parent's installation. |
-| Prompt | Complete text, task, variables and an input example. If tested, include the model and representative result. Code, a standalone repository and `dsh.bundle` are unnecessary. |
-| Theme | State whether it is a plugin or a preset, supported DSH/interface versions, any parent plugin, light/dark examples, application and restoration steps, and font/image licenses. A preset does not require its own plugin manifest. |
+| Plugin | Exact `packageRef: { name, version }`; the version matches the displayed version. Installation additionally checks the actual package manifest, host/dependencies and entrypoints. |
+| Skill | Reviewed GitHub `repository` and `root`, fixed 40-character commit, original file paths/Git blob hashes/modes/sizes, SKILL.md and applicable license files. Reviewed repositories are not limited to Anthropic or OpenAI. |
+| MCP | Complete `serverDefinition` with a fixed matching version, supported transport, endpoints/packages and input declarations. Connection support is narrower than directory admission; include requirements, permissions and service costs, never secrets. |
+| Slash | A known `parentId` plus an explicit `command`. The parent must be an admitted plugin or a pinned official module; installation belongs to it. |
+| Prompt | Complete original body, attribution and license. Third-party provenance pins the source and body hash; label adaptations explicitly. |
+| Theme | Current installable admission requires an exact matching npm `packageRef`. Presets or standalone theme files can be proposed, but have no generic public installation path yet. |
 
-Separate author-declared compatibility from actual test results. Include the resource version, DSH range and tested version, runtime/interface, dependencies, and any protocol/adapter versions. Native bundles and dsh-std components use different declarations; adopting dsh-std is optional, and its components need the corresponding adapter rather than their own `dsh.bundle`. Our market has not integrated that adapter or automated compatibility enforcement. See [compatibility and themes](docs/COMPATIBILITY_AND_THEMES.md) for the verified boundaries.
+Separate author declarations from actual download, install, load, call and removal checks. Record exact resource/DSH/adapter versions and OS/interface. Native bundles and optional dsh-std components use different declarations; the current market integrates the pinned adapter and compatibility checks. Metadata or protocol negotiation does not establish runtime success. Include theme appearance/restoration evidence and known warnings. Text resources can use examples; automatic screenshot discovery is not implemented.
 
-Mark what you actually checked: documentation only, download, installation, loading, or use. Untested claims stay untested; screenshots do not prove every stage. Visual resources benefit from screenshots or a short recording; text resources may use examples instead. Images are review attachments for now: automatic screenshot discovery is not implemented. Submit in English, Chinese or Japanese; contributors need not translate resource content into all three languages.
+There are no minimum Stars, repository age, commit count, mandatory Topics or fixed three-entry PR limit. Similar resources can coexist when their differences are clear. Unsupported licenses/formats may be proposed, but never relabel a license to pass validation. Maintainers explain acceptance, missing information or deferral in the same Issue/PR.
 
-Maintainers check provenance, descriptions, relevant behavior and existing entries, then explain acceptance, missing information or deferral in the Issue/PR. Fixes can stay in the same submission. Classification can be corrected during review. Format checks support this decision; they do not certify quality, safety or universal compatibility. Reviewed sources are integrated only when the corresponding adapter is supported; an Issue or exported JSON is not automatic publication.
+### Updates and removal
 
-Current file formats, license allowlists and download limits remain those in the [Prompt guide](catalog/README.md) and [source guide](sources/README.md). Unsupported cases can be proposed for review without changing a license to pass validation. `npm run verify` is the local gate; GitHub Actions and automatic submission approval are not configured. Updates, broken-source reports and author removal requests use the same review channels.
+Updates repeat review with a new exact version/commit and regenerated indexes. Client discovery does not replace personal copies or automatically upgrade installations.
 
-Preserve third-party attribution and licenses; original project contributions use MIT. Keep affected README translations aligned. Never submit credentials, authentication URLs, or private data. Authors, maintainers, and rights holders may use the removal form even without an infringement claim; see [the contact notice](DISCLAIMER.md).
+Authors, maintainers or rights holders may request removal without alleging infringement. Use the [removal form](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml). After verification, maintainers add the reason, Issue and stable identities to `sources/removals.json`, rebuild and merge. Rules apply across aliases/sources and survive failed syncs and restarts; existing installations and personal copies remain. The [catalog guide](catalog/README.md) defines identity scope.
+
+### Verification and rights
+
+`npm run verify` is shared by the local gate, [Windows CI](.github/workflows/verify.yml) and [pre-commit hook](.githooks/pre-commit). Enable the hook with `git config core.hooksPath .githooks`. CI is configured for Windows 2025, Node 24.16.0 and pnpm 12.3.4; it uses an ephemeral read-only GitHub token encrypted with DPAPI. Online CI and final candidate acceptance are pending as of 2026-09-14. Do not label partial checks as a full pass.
+
+Original contributions use [MIT](LICENSE); preserve third-party licenses, attribution and [notices](THIRD_PARTY_NOTICES.md). Keep affected README translations aligned. Never submit credentials, local authentication URLs, databases or private evidence. See [disclaimer and contact](DISCLAIMER.md).
 
 ## 简体中文
 
-通过 [Issue 表单](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose) 反馈问题、建议功能、推荐资源或申请移除；使用交流请到 [Discussions](https://github.com/QT7-C23/DSH-Marketplace/discussions)。可使用英文、中文或日语。提交 Issue 不代表资源已经上架。
+通过 [Issue 表单](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose) 提交问题、功能建议、资源提案或作者退出申请，可使用中、英、日任一语言。市场没有独立账户，贡献使用 GitHub 身份。Issue 和文件导出不等于公开上架。
 
-提交 PR 时，先 Fork 仓库，保持改动聚焦并填写 PR 模板。Commit 信息和 PR 标题使用 `type: 简短说明`，类型为 `feat`、`fix`、`docs`、`test`、`refactor` 或 `chore`，例如 `docs: 补充资源移除说明`。关联相关 Issue，解释实际行为变化，提供 `npm run verify` 结果及限制；界面变更附截图。开发规范见 [Repository Guidelines](AGENTS.md)，环境准备见 [快速开始](README.zh-CN.md#快速开始)。
+代码和文档以聚焦的 PR 提交并填写模板。Commit 和 PR 标题使用 `type: 简短说明`：`feat`、`fix`、`docs`、`test`、`refactor`、`chore`。这是本仓库约定，不是继承父仓库历史的陈述。说明实际变化、关联问题、验证和限制，界面改动附证据。见 [快速开始](README.zh-CN.md#快速开始) 与 [仓库规范](AGENTS.md)。
 
-Prompt 按 [catalog/README.md](catalog/README.md) 的格式提交到 `catalog/prompts/<id>.json`，运行 `node catalog/build.mjs` 后执行 `npm run verify`。其他资源推荐须提供原作者、来源、版本、许可依据、使用要求和实际验证情况；收录不等于已安装或已验证兼容。
+### 提案、审核、合并、同步
 
-### 资源审核
+1. 提供用途、原作者、来源／版本、许可依据、使用方法和已知限制；说明分叉与改编。Issue 阶段可以注明未知，可执行字段不必齐全。
+2. 界面通用 JSON 导出仅保留提案字段。维护者核对作者与授权后补齐下表绑定；不要把审核条目通过通用编辑器导入再导出，以为执行字段会保留。
+3. Prompt 放入 `catalog/prompts/<id>.json`；审核后的插件、Skill、MCP、Slash、主题放入 `catalog/resource-entries.json`。格式见 [目录指南与示例](catalog/README.md)。
+4. 执行 `node catalog/build.mjs`，再执行 `npm run verify`；PR 同时包含源文件与生成的 `catalog/index.json`、`catalog/registry.json`。不要手改索引。
+5. 合并到 `main` 后，社区适配器固定提交读取并校验索引字节；客户端手动同步或六小时自动检查成功后收录。扫描失败保留旧快照，未合并提案不入库。
 
-本项目面向插件、Skill、MCP、Slash、Prompt、主题。外部贡献指南供我们参考说明方式，其收录规则不直接约束本市场。我们不设仓库年龄、Star、提交数量、指定 Topic 或每个 PR 固定三条的门槛。投稿应聚焦；同类资源说明差异后可以并存。稳定资源也不因久未提交代码就被判定不可用。
-
-推荐资源时，请说明解决的任务、原作者、内容或来源、版本、分享许可、使用方法与已知限制。未知信息可在 Issue 中注明；内容进入分发前须解决署名与授权缺口。简介应与实际内容一致，分叉或改编说明来源及改动。
-
-| 类型 | 审核需要了解的内容 |
+| 类型 | 公开收录前必须具备的绑定 |
 |---|---|
-| 插件 | 发布包或源码、适用 DSH/系统版本、依赖及配置。声称可按官方 bundle 安装时，应提供 manifest 与 patch；仅有 `dsh.client` 不能证明已经生效。内部模块、仅前端组件按实际角色说明。 |
-| Skill | 完整 SKILL.md 及引用文件、适用任务、运行条件和调用示例。 |
-| MCP | 发布者、服务定义、传输方式、启动或连接方法、凭据要求及外部服务费用；不提交真实密钥。 |
-| Slash | 所属插件、命令语法、参数与预期行为；与父插件共用安装。 |
-| Prompt | 完整正文、用途、变量与输入示例；如已测试，附所用模型与代表性结果。无需代码、独立仓库或 `dsh.bundle`。 |
-| 主题 | 说明是主题插件还是配色文件，适用 DSH/界面版本、父插件、深浅色示例、应用与恢复方法、字体和图片许可。配色文件无需独立的插件 manifest。 |
+| 插件 | 精确 `packageRef: { name, version }`，与展示版本一致。安装阶段另查实际包声明、宿主／依赖与入口。 |
+| Skill | 审核后的 GitHub `repository`、`root`、40 位固定 commit、原始文件路径／Git blob hash／模式／大小、SKILL.md 与适用许可文件。可审核 Anthropic、OpenAI 以外的仓库。 |
+| MCP | 完整 `serverDefinition`，包含一致的固定版本、受支持传输、端点／包与参数声明。实际连接支持比目录收录更窄；说明权限、条件和费用，不提交密钥。 |
+| Slash | 可解析的 `parentId` 和明确的 `command`。父项须为已收录插件或固定官方模块，共用父插件安装。 |
+| Prompt | 完整原文、原作者和许可；第三方内容固定来源与正文校验值，改编单独标注。 |
+| 主题 | 当前可安装收录要求版本一致的固定 npm `packageRef`。配色文件可先提案，但暂无通用公开安装路径。 |
 
-作者声明与实际测试分别记录：资源版本、DSH 适用范围与实测版本、运行环境/界面、依赖，以及采用的协议和适配器版本。原生 bundle 与 dsh-std 组件使用不同声明；dsh-std 自愿采用，其组件依赖相应适配器，不必自己提供 `dsh.bundle`。本市场尚未接入该适配器或自动兼容拦截，已核查边界见 [资源兼容与主题支持](docs/COMPATIBILITY_AND_THEMES.md)。
+作者声明与下载、安装、加载、调用、卸载实测分开记录，注明精确资源／DSH／适配器版本、系统与界面。原生 bundle 与可选 dsh-std 使用不同声明；当前市场已经接入固定适配器与兼容检查，但元数据或协议协商不能证明实际功能成功。主题提供外观、恢复证据与警告，文字资源可提供使用示例；截图自动发现尚未实现。
 
-请写明实际验证到哪一步：仅阅读文档、下载、安装、加载或使用。未测部分保留“未验证”，截图不代表所有步骤通过。界面类资源推荐附截图或短录屏，文字类可用示例；图片目前用于人工审核，尚未实现截图自动发现。投稿可使用中、英、日任一语言，不要求贡献者把资源正文翻译成三语。
+不设最低 Star、仓库年龄、提交次数、强制 Topic 或固定每 PR 三条的门槛。同类资源可说明差异后并存。不支持的许可或格式可以提出讨论，不得改填许可通过验证。维护者在原 Issue/PR 中说明接受、待补材料或暂缓原因。
 
-维护者核对来源、描述、适用行为和已有条目后，在 Issue/PR 中说明接受、待补材料或暂缓的原因；可在原提交内修正，分类也可在审核中调整。格式检查辅助判断，不构成质量、安全或普遍兼容认证。审核后的来源仍需适配器支持才能接入；Issue 和导出 JSON 均不会自动上架。
+### 更新与移除
 
-当前文件格式、许可白名单与下载限制以 [Prompt 指南](catalog/README.md) 和 [来源说明](sources/README.md) 为准。不支持的情况可提出审核，不能改填许可来通过校验。`npm run verify` 是本地门禁，GitHub Actions 和投稿自动批准尚未配置。更新、来源失效报告和作者移除申请沿用上述渠道。
+更新需重新审核精确版本／提交并重建索引。客户端发现更新不自动替换个人副本或升级安装。
 
-第三方资源保留原署名和许可，项目原创贡献采用 MIT。相关 README 翻译同步更新。不要提交凭据、认证地址或私人数据。作者、维护者或权利人无需先提出侵权指控，即可使用移除表单，联系说明见 [免责声明](DISCLAIMER.md)。
+作者、维护者或权利人无需提出侵权指控，即可使用 [移除表单](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml)。核实后维护者在 `sources/removals.json` 记录原因、Issue 与稳定身份，重建并合并。策略跨别名／来源生效，在同步失败与重启后仍保留；既有安装和私人副本不删除。身份范围见 [目录指南](catalog/README.md)。
+
+### 验证与权利
+
+本地、[Windows CI](.github/workflows/verify.yml) 与 [pre-commit hook](.githooks/pre-commit) 共用 `npm run verify`。通过 `git config core.hooksPath .githooks` 启用 hook。CI 配置为 Windows 2025、Node 24.16.0、pnpm 12.3.4，以 DPAPI 加密临时只读 GitHub 令牌。截至 2026-09-14，线上 CI 和候选版完整验收待完成；不得把局部检查写成全量通过。
+
+原创贡献采用 [MIT](LICENSE)，保留第三方许可、署名与 [声明](THIRD_PARTY_NOTICES.md)，同步受影响的 README 翻译。不要提交凭据、本机认证地址、数据库或私人证据，见 [免责声明与联系说明](DISCLAIMER.md)。
 
 ## 日本語
 
-不具合、機能提案、リソース推薦、掲載取り下げは [Issue フォーム](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose)、使い方の相談は [Discussions](https://github.com/QT7-C23/DSH-Marketplace/discussions) を利用してください。英語・中国語・日本語で記入できます。Issue の提出だけでリソースが公開されることはありません。
+不具合、機能、リソース提案、作者による取り下げは [Issue フォーム](https://github.com/QT7-C23/DSH-Marketplace/issues/new/choose)を使い、中・英・日のいずれかで記載できます。マーケット用アカウントはなく、貢献は GitHub のアカウントで行います。Issue や出力ファイルだけでは公開されません。
 
-PR はリポジトリを Fork し、変更範囲を絞ってテンプレートを記入してください。コミットメッセージと PR タイトルは `type: 短い説明` とし、`feat`、`fix`、`docs`、`test`、`refactor`、`chore` を使用します。例：`docs: 掲載取り下げの案内を追加`。関連 Issue、実際の動作変更、`npm run verify` の結果と制限を記載し、UI 変更には画像を添えてください。[Repository Guidelines](AGENTS.md) と [セットアップ](README.ja-JP.md#クイックスタート) も参照してください。
+コード・文書は範囲を絞った PR とテンプレートで提出してください。コミットと PR は `type: 短い説明` とし、`feat`、`fix`、`docs`、`test`、`refactor`、`chore` を使います。これは本リポジトリの慣例で、親リポジトリの履歴を示すものではありません。動作変更、関連 Issue、検証と制限を説明し、UI には証拠を添えてください。[開始手順](README.ja-JP.md#クイックスタート)と[規則](AGENTS.md)を参照してください。
 
-Prompt は [catalog/README.md](catalog/README.md) に従って `catalog/prompts/<id>.json` に追加し、`node catalog/build.mjs` の後に `npm run verify` を実行します。他のリソース提案には原著作者、出典、バージョン、ライセンスの根拠、利用要件、実際の検証結果を含めてください。掲載はインストールや互換性の検証を意味しません。
+### 提案、審査、マージ、同期
 
-### リソースの審査
+1. 用途、原著作者、出典／版、ライセンス根拠、使い方、既知の制限を記載し、フォーク・改変を説明します。不明点は明記でき、Issue 段階で実行用項目をすべて揃える必要はありません。
+2. 画面の汎用 JSON 出力は提案項目だけです。メンテナーが帰属・許可を確認し、下表の情報を補います。審査済み項目を汎用エディターで再出力しても実行用情報は保持されません。
+3. Prompt は `catalog/prompts/<id>.json`、審査済み Plugin・Skill・MCP・Slash・Theme は `catalog/resource-entries.json` に保存します。[カタログガイドと例](catalog/README.md)に従ってください。
+4. `node catalog/build.mjs`、`npm run verify` の順に実行し、入力と生成された `catalog/index.json`・`catalog/registry.json` を PR に含めます。索引を直接編集しないでください。
+5. `main` へのマージ後、アダプターはコミットを固定して索引のバイトを検証します。クライアントは手動同期または 6 時間ごとの確認成功で取得します。失敗時は旧キャッシュを保持し、未マージの提案は収録しません。
 
-対象はプラグイン、Skill、MCP、Slash、Prompt、テーマです。他の貢献ガイドは説明方法の参考であり、その掲載条件を本市場の規則にはしません。リポジトリの経過日数、Star、コミット数、指定 Topic、PR ごとに一律三件までという条件は設けません。投稿範囲は絞り、類似リソースは違いを説明してください。安定したリソースは更新が少ないだけで利用不可とは判断しません。
-
-用途、原著作者、内容・出典、版、共有の許可、利用方法、既知の制限を記載してください。不明な点は Issue に明記できますが、配布前に帰属と許可を確認します。説明は実態に合わせ、フォークや改変には出典と変更内容を記載します。
-
-| 種類 | 審査に必要な情報 |
+| 種類 | 公開収録前に必要な情報 |
 |---|---|
-| プラグイン | 配布物またはソース、DSH・OS の版、依存関係と設定。公式 bundle として導入可能とする場合は manifest と patch を提示します。`dsh.client` だけでは有効化の証拠になりません。内部モジュールやフロントエンドのみの部品は役割を明示します。 |
-| Skill | 完全な SKILL.md と参照ファイル、用途、実行条件、呼び出し例。 |
-| MCP | 公開者、サーバー定義、転送方式、起動・接続方法、必要な認証と外部サービス料金。実際の秘密情報は含めません。 |
-| Slash | 提供元プラグイン、構文、引数、期待する動作。導入は親プラグインと共通です。 |
-| Prompt | 全文、用途、変数、入力例。検証済みならモデルと代表的な結果も記載します。コード、独立したリポジトリ、`dsh.bundle` は不要です。 |
-| テーマ | プラグインか配色ファイルか、対応 DSH・画面の版、親プラグイン、明暗の表示例、適用・復元手順、フォント・画像のライセンスを記載します。配色ファイルに独立したプラグイン manifest は不要です。 |
+| プラグイン | 固定 `packageRef: { name, version }` と表示版の一致。導入時には実際の宣言、ホスト／依存、入口を別途確認します。 |
+| Skill | 審査済み GitHub `repository`・`root`、40 桁コミット、原ファイルのパス／Git blob ハッシュ／モード／サイズ、SKILL.md とライセンス。Anthropic・OpenAI 以外のリポジトリも審査できます。 |
+| MCP | 固定版が一致する完全な `serverDefinition`、対応転送方式、エンドポイント／パッケージ、入力宣言。接続対応は掲載条件より狭いため、要件・権限・料金を説明し、秘密情報は記載しません。 |
+| Slash | 解決可能な `parentId` と明確な `command`。親は掲載プラグインまたは固定公式モジュールで、導入は親に属します。 |
+| Prompt | 完全な原文、帰属、ライセンス。第三者作品は出典と本文ハッシュを固定し、改変は明示します。 |
+| テーマ | 現在の導入可能な掲載には固定 npm `packageRef` と表示版の一致が必要です。配色ファイルも提案できますが、汎用導入経路はありません。 |
 
-作者の互換性宣言と実測は区別し、リソースの版、DSH 対応範囲と実測版、環境・画面、依存関係、採用したプロトコルとアダプターの版を記載してください。ネイティブ bundle と dsh-std コンポーネントは宣言が異なり、dsh-std の採用は任意です。そのコンポーネントには対応アダプターが必要ですが、独自の `dsh.bundle` は不要です。本市場は同アダプターと自動互換性判定を未導入です。[互換性とテーマ](docs/COMPATIBILITY_AND_THEMES.md)に確認済みの範囲をまとめています。
+作者の宣言とダウンロード・導入・読み込み・呼び出し・削除の実測を分け、正確なリソース／DSH／アダプター版、OS、画面を記録します。ネイティブ bundle と任意の dsh-std は異なる宣言を使います。現在は固定アダプターと互換性検査を統合していますが、メタデータや協商だけでは機能の成功を証明できません。テーマは外観・復元と警告、テキストは利用例を提示できます。画像の自動検出は未実装です。
 
-文書確認、ダウンロード、インストール、読み込み、利用のどこまで検証したかを明記し、未検証を成功としないでください。画像だけですべての段階を証明することはできません。UI は画像や短い録画、テキストは利用例を推奨します。画像は現在、手動審査の資料であり、自動検出は未実装です。中・英・日のいずれかで投稿でき、本文の三言語翻訳は必須ではありません。
+最低 Star、リポジトリ年齢、コミット数、必須 Topic、一律 PR 3 件までという条件はありません。類似項目は違いを説明してください。未対応のライセンス・形式は提案できますが、検査のためにライセンスを偽ってはいけません。受理・追加資料・保留の理由は元の Issue/PR に記載します。
 
-メンテナーは出典、説明、関連する動作、既存項目を確認し、受理・追加資料・保留の理由を Issue/PR に記載します。同じ投稿で修正でき、分類も審査中に調整できます。形式検証は判断を補助するもので、品質・安全性・全環境での互換性の認証ではありません。審査済みの配布元も対応アダプターが必要で、Issue や JSON の書き出しだけでは公開されません。
+### 更新と取り下げ
 
-現在の形式、対応ライセンス、取得制限は [Prompt ガイド](catalog/README.md) と [配布元の説明](sources/README.md) に従います。未対応のケースは提案できますが、検証を通すためにライセンスを書き換えないでください。`npm run verify` がローカルの検証入口で、GitHub Actions と投稿の自動承認は未設定です。更新、不通の報告、作者による取り下げも同じ窓口を使います。
+更新は固定版／コミットを再審査して索引を再生成します。クライアントでの検出は個人のコピーや導入物を自動更新しません。
 
-第三者の帰属表示とライセンスを保持し、プロジェクトのオリジナルの貢献には MIT を適用します。関連する README 翻訳も更新してください。認証情報や非公開データは提出しないでください。著作者・メンテナー・権利者は、侵害を主張しなくても掲載取り下げを依頼できます。[免責事項の連絡案内](DISCLAIMER.md) を参照してください。
+著作者・メンテナー・権利者は侵害を主張せずに [取り下げフォーム](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml)を使えます。確認後、理由・Issue・安定した識別子を `sources/removals.json` に記録して再生成・マージします。別名／配布元をまたいで適用し、同期失敗・再起動後も保持します。導入済みの内容と個人のコピーは残ります。識別範囲は[カタログガイド](catalog/README.md)を参照してください。
+
+### 検証と権利
+
+ローカル、[Windows CI](.github/workflows/verify.yml)、[pre-commit hook](.githooks/pre-commit) は `npm run verify` を共有します。hook は `git config core.hooksPath .githooks` で有効化します。CI は Windows 2025、Node 24.16.0、pnpm 12.3.4 を使い、一時的な読み取り専用 GitHub トークンを DPAPI で暗号化します。2026-09-14 時点ではオンライン CI と候補版の完全な検証は未完了です。一部の検査を全体の合格と表現しないでください。
+
+独自の貢献には [MIT](LICENSE) を適用し、第三者のライセンス・帰属・[表示](THIRD_PARTY_NOTICES.md)を保持します。関連 README 翻訳を揃え、認証情報、ローカル認証 URL、DB、非公開の証拠を提出しないでください。[免責と連絡先](DISCLAIMER.md)

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { sourceIds, sourceResource, discoveryReport } from './contracts.mjs';
+import { removalList } from './removals.mjs';
 
 const hash = value => createHash('sha256').update(JSON.stringify(value)).digest('hex');
 const legacyFingerprint = item => hash({ ...item, revision: 0, updatedAt: '' });
@@ -15,7 +16,8 @@ export function fingerprint(item) {
 
 /** Validate old snapshots before upgrading their fingerprint representation in memory. */
 export function restoreCache(cached) {
-  if (cached.schema !== 1 || !Array.isArray(cached.rows) || !cached.history || cached.rows.length !== sourceIds.length || new Set(cached.rows.map(row => row.id)).size !== sourceIds.length) throw Error('目录缓存格式异常');
+  if (cached.schema !== 1 || !Array.isArray(cached.rows) || !cached.history || new Set(cached.rows.map(row => row.id)).size !== cached.rows.length || !['dsh', 'skills', 'mcp'].every(id => cached.rows.some(row => row.id === id))) throw Error('目录缓存格式异常');
+  cached.removals = removalList(cached.removals ?? []);
   for (const row of cached.rows) {
     if (!sourceIds.includes(row.id) || !Array.isArray(row.entries)) throw Error('目录缓存来源异常');
     if (row.automatic !== undefined && typeof row.automatic !== 'boolean') throw Error('目录自动检查设置异常');

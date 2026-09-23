@@ -1,0 +1,50 @@
+[
+  {
+    "schema": 1,
+    "id": "official-plan",
+    "type": "Slash",
+    "title": "/plan",
+    "summary": "先规划、评审，再继续任务。",
+    "body": "/plan 由 @deepseek-ai/dsh-plan-mode 提供。\n\n进入规划：/plan\n退出规划：/plan off。规划指导不等于工具权限限制。\n\n可从市场确认参数后在当前会话执行；具体行为以所属插件和当前会话状态为准。",
+    "url": "https://github.com/deepseek-ai/deepseek-harness/tree/c291e7961a515f6d7af9304e7fd1d257929aef26/packages/plan/plan-mode",
+    "version": "0.1.5-rc.2",
+    "author": "deepseek-ai",
+    "license": "MIT",
+    "language": "zh",
+    "parentId": "source-dsh-plan-mode",
+    "command": "/plan",
+    "requirements": "依赖 @deepseek-ai/dsh-plan-mode 和交互式命令入口；与所属插件共用安装。"
+  },
+  {
+    "schema": 1,
+    "id": "official-compact",
+    "type": "Slash",
+    "title": "/compact",
+    "summary": "为长对话提供主动压缩入口。",
+    "body": "/compact 由 @deepseek-ai/dsh-command-compact 提供。\n\n不带参数执行 /compact 可请求压缩历史。压缩会改变会话历史，是否调用模型由压缩后端决定。\n\n可从市场确认参数后在当前会话执行；具体行为以所属插件和当前会话状态为准。",
+    "url": "https://github.com/deepseek-ai/deepseek-harness/tree/c291e7961a515f6d7af9304e7fd1d257929aef26/packages/compaction/command-compact",
+    "version": "0.1.5-rc.2",
+    "author": "deepseek-ai",
+    "license": "MIT",
+    "language": "zh",
+    "parentId": "source-dsh-command-compact",
+    "command": "/compact",
+    "requirements": "依赖 @deepseek-ai/dsh-command-compact 和交互式命令入口；与所属插件共用安装。"
+  },
+  {
+    "schema": 1,
+    "id": "official-goal",
+    "type": "Slash",
+    "title": "/goal",
+    "summary": "查看和管理当前任务目标。",
+    "body": "/goal 由 @deepseek-ai/dsh-command-goal 提供。\n\n使用 /goal 查看目标状态。创建、编辑、暂停和恢复操作由宿主目标系统处理。\n\n可从市场确认参数后在当前会话执行；具体行为以所属插件和当前会话状态为准。",
+    "url": "https://github.com/deepseek-ai/deepseek-harness/tree/c291e7961a515f6d7af9304e7fd1d257929aef26/packages/goal/command-goal",
+    "version": "0.1.5-rc.2",
+    "author": "deepseek-ai",
+    "license": "MIT",
+    "language": "zh",
+    "parentId": "source-dsh-command-goal",
+    "command": "/goal",
+    "requirements": "依赖 @deepseek-ai/dsh-command-goal 和交互式命令入口；与所属插件共用安装。"
+  }
+]

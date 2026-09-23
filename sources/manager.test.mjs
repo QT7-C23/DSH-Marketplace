@@ -6,6 +6,23 @@ import path from 'node:path';
 import { SourceManager } from './manager.mjs';
 import seed from './catalog.json' with { type: 'json' };
 
+test('closing built-in discovery cancels upstream requests and does not publish shutdown failures', async () => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'dsh-source-cancel-'));
+  let signal;
+  const manager = new SourceManager(folder, { request: async (_url, options) => {
+    signal = options.signal;
+    return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  } });
+  const before = manager.resources();
+  const pending = manager.sync('mcp');
+  await new Promise(resolve => setImmediate(resolve));
+  assert(signal, 'Discovery must use the provided request boundary');
+  await manager.close(); await pending;
+  assert.equal(signal.aborted, true);
+  assert.deepEqual(manager.resources(), before);
+  assert.equal(manager.status().find(row => row.id === 'mcp').state, 'bundled');
+});
+
 test('source updates deduplicate, persist revisions and retain old entries on failure', async () => {
   const folder = await mkdtemp(path.join(os.tmpdir(), 'dsh-sources-'));
   const base = seed.find(row => row.id === 'skills').entries;

@@ -25,6 +25,9 @@ test('package is a closed installable bundle with runtime dependencies and actua
   assert.equal(manifest.name, 'dsh-market-integration');
   assert.equal(manifest.dsh.bundle.patch, './cordis.patch.yml');
   assert.equal(manifest.dsh.client.platform, 'web');
+  assert.equal(manifest.exports['./standard-loader'], './integration/plugin/compatibility/standard-loader.mjs');
+  assert.match(files.get('package/cordis.patch.yml').toString(), /standardLoader: package/);
+  assert(files.has('package/integration/plugin/compatibility/standard-loader.mjs'));
   assert.equal(manifest.engines.dsh, '0.1.5-rc.2');
   assert.equal(manifest.dependencies['@dsh-std/manifest'], '0.1.1-rc.3');
   assert.equal(manifest.peerDependencies['@deepseek-ai/dsh-llm'], '0.1.5-rc.2');

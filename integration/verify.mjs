@@ -18,7 +18,7 @@ async function completed(child) {
 }
 console.log('Preparing a fresh DSH profile with no model credentials; the configured local GitHub read token is optional.');
 await completed(await launch(['web', '--dump-config'], { stdio: 'ignore', timeout: 60000 }));
-await setPlugin(false, { translationFixture: true });
+await setPlugin(false, { translationFixture: true, resourceFixture: true });
 await writeFile(path.join(lab, 'workspace/report.md'), '# Integration fixture\nA harmless reference document.\n');
 await mkdir(path.join(lab, 'workspace-second'));
 const host = await launch(['web', '--port', '0', '--no-open'], { quiet: true });
@@ -43,7 +43,7 @@ try {
   if (!ready) throw new Error('DSH did not become ready within the startup deadline');
   console.log('Running browser experiments against the actual DSH host.');
   const filter = process.argv[2] ? ['--test-name-pattern', process.argv[2]] : [];
-  await completed(spawn(process.execPath, ['--test', ...filter, 'integration/browser.test.mjs'], { cwd: root, env: process.env, stdio: 'inherit', windowsHide: true, timeout: 180000 }));
+  await completed(spawn(process.execPath, ['--test', '--test-reporter=tap', ...filter, 'integration/browser.test.mjs'], { cwd: root, env: process.env, stdio: 'inherit', windowsHide: true, timeout: 600000 }));
   console.log(`Host verification passed. Isolated evidence: ${path.relative(root, lab)}`);
 } finally {
   if (host.exitCode === null) stop();

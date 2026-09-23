@@ -6,6 +6,8 @@ import { fileURLToPath } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '../node_modules/playwright/index.mjs';
 import { buildPackage } from './package.mjs';
+import sourceCatalog from '../sources/catalog.json' with { type: 'json' };
+import { mergeSourceResources } from '../sources/merge.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const artifacts = path.join(root, 'artifacts/dsh-integration');
@@ -63,7 +65,9 @@ await withHost(async page => {
   const response = await page.request.get(origin + '/api/community/read');
   assert.equal(response.status(), 200);
   const snapshot = await response.json();
-  assert.equal(snapshot.catalog.length, 30);
+  const bundled = mergeSourceResources(sourceCatalog.flatMap(row => row.entries));
+  for (const item of bundled) assert(snapshot.catalog.some(value => value.id === item.id), `Packaged catalog must include ${item.id}`);
+  assert.equal(new Set(snapshot.catalog.map(item => item.id)).size, snapshot.catalog.length);
   const resource = snapshot.catalog.find(item => item.type === 'Prompt');
   const download = await page.request.post(origin + '/api/community', { headers: { origin, 'x-community-request': '1' }, data: { action: 'download', id: resource.id, baseRevision: resource.revision, requestId: crypto.randomUUID() } });
   assert.equal(download.status(), 200, await download.text());

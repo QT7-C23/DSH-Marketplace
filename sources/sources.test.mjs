@@ -19,21 +19,31 @@ test('DSH package discovery pins host version and keeps Slash linked to one pack
   for (const slash of items.filter(item => item.type === 'Slash')) assert.ok(items.some(item => item.id === slash.parentId && item.type === '插件'));
   await assert.rejects(readDsh(async () => ({ name: 'wrong', version: '999' })), /包|版本/);
 });
-test('MCP discovery reads exact publishers and preserves executable definitions as data', async () => {
-  const items = await readMcp(async url => {
-    const name = decodeURIComponent(url.split('/').at(-3));
-    return { server: { name, version: '1.0.0', description: 'Original description', repository: { url: 'https://github.com/owner/repo' }, remotes: [{ type: 'streamable-http', url: 'https://mcp.example/mcp', headers: [{ name: 'Authorization', isSecret: true }] }] }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'active', isLatest: true } } };
-  });
+test('MCP discovery preserves executable definitions as data through directory pagination', async () => {
+  const items = await readMcp(async () => ({ servers: MCP_SERVERS.map(([name]) => ({ server: { name, version: '1.0.0', description: 'Original description', repository: { url: 'https://github.com/owner/repo' }, remotes: [{ type: 'streamable-http', url: 'https://mcp.example/mcp', headers: [{ name: 'Authorization', isSecret: true }] }] }, _meta: { 'io.modelcontextprotocol.registry/official': { status: 'active', isLatest: true } } })), metadata: { count: MCP_SERVERS.length } }));
   assert.equal(items.length, MCP_SERVERS.length);
   assert.equal(items[0].serverDefinition.remotes[0].headers[0].isSecret, true);
   assert.match(items[0].requirements, /配置|身份/);
-  await assert.rejects(readMcp(async () => ({ server: { name: 'unrelated' } })), /注册|发布者/);
+  await assert.rejects(readMcp(async () => ({ server: { name: 'unrelated' } })), /目录|注册/);
 });
 test('upstream reads reject redirects, errors and arbitrary destinations without credentials', async () => {
   let called = false;
   await assert.rejects(readUpstream('https://private.example/x', async () => { called = true; }), /来源地址/);
   assert.equal(called, false);
   await assert.rejects(readUpstream('https://api.github.com/repos/a/b', async (_, options) => { assert.equal(options.redirect, 'error'); assert.equal(options.headers.authorization, undefined); return new Response('', { status: 429 }); }), /429/);
+});
+
+test('a reset public connection retries once without accepting partial data or ignoring shutdown', async () => {
+  let calls = 0;
+  const bytes = await readBytes('https://raw.githubusercontent.com/openai/skills/main/README.md', async () => {
+    calls++;
+    if (calls === 1) throw new TypeError('fetch failed', { cause: { code: 'ECONNRESET' } });
+    return new Response('original complete content');
+  });
+  assert.equal(calls, 2); assert.equal(bytes.toString(), 'original complete content');
+  calls = 0;
+  await assert.rejects(readBytes('https://api.github.com/repos/openai/skills', async () => { calls++; throw new DOMException('stopped', 'AbortError'); }), /stopped/);
+  assert.equal(calls, 1);
 });
 
 test('a timed out public read retries once with a fresh deadline and no credentials', async () => {

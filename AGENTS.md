@@ -1,39 +1,30 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Structure and boundaries
 
-`DSH` contains a marketplace and prototype within the parent checkout at `D:\Project`. `prototype/` holds browser modules, styles, samples, and tokens; `server/` serves it. `community/` owns public contracts, SQLite download counts, HTTP boundaries, and tests. `languages/` holds shared Chinese, English, and Japanese messages. `catalog/` contains GitHub Prompts; `sources/` owns external adapters, version caches, archive downloads, and tests. `integration/` contains pinned DSH dependencies, React UI, launcher, and host tests. `tests/` and `scripts/` cover verification.
+This is the independent DSH Marketplace repository at `D:\Project\DSH`. `integration/` owns the pinned DSH host, React UI, native resource adapters, package builder and host acceptance. `community/` owns HTTP contracts, local SQLite counts and external metrics. `sources/` owns discovery, caches, identities, removals and verified downloads. `catalog/prompts/` and `catalog/resource-entries.json` are reviewed catalog inputs. `languages/` contains shared Chinese, English and Japanese messages. `prototype/` and `server/` retain the historical standalone prototype.
 
-Stable documentation lives in `docs/`; dated investigations belong in `docs/research/`. Runtime captures, credentials, and host databases stay in ignored `artifacts/`; reviewed public illustrations belong in `docs/images/`.
+Stable documentation belongs in `docs/`; dated investigations in `docs/research/`. Keep credentials, databases and runtime evidence in ignored `artifacts/`; public illustrations belong in `docs/images/`.
 
-## Build, Test, and Development Commands
+## Development and verification
 
-Use Node.js 24+ and run commands from `D:\Project\DSH`:
+Use Node.js 24+ and run from the repository root:
 
-- `npm ci`: install locked development dependencies.
-- `npm ci --prefix integration --ignore-scripts`: install pinned host dependencies.
-- `npm start`: serve the prototype at `http://127.0.0.1:4173`.
-- `npm run verify`: check static rules and catalog, run behavioral tests, type checks, plugin build, and host acceptance tests.
-- `npm run package`: build the standalone development TGZ under `artifacts/releases/`.
-- `npm run verify:package`: test official installation, real host UI, removal, and retained data.
-- `npm test`: run state and HTTP tests.
-- `npm run test:browser`: exercise workflows in Playwright and save screenshots.
-- `npm run tokens`: regenerate CSS after editing `prototype/tokens.json`.
+- `npm ci` and `npm ci --prefix integration --ignore-scripts`: install locked dependencies.
+- `npm run verify`: the single gate for static/catalog checks, behavioral tests, types, build and host acceptance.
+- `npm run package`: build the standalone TGZ under `artifacts/releases/`.
+- `npm run verify:package`: check official installation, real UI, removal and retained data.
+- `npm start`, `npm test`, `npm run test:browser`: historical prototype server and tests.
+- `npm run tokens`: regenerate prototype CSS after token changes.
 
-Windows tests use Microsoft Edge; other systems require `npx playwright install chromium` and remain unverified for host integration. Source acceptance needs live GitHub and npm access. Host startup is documented in `integration/README.md`. Parent CI and commit hooks are not connected; they must invoke the same verification command.
+Host setup is in `integration/README.md`. Windows acceptance uses Microsoft Edge and pnpm; live sources require network access. CI in `.github/workflows/verify.yml` uses Windows 2025, Node 24.16.0 and pnpm 12.3.4. The workflow and `.githooks/pre-commit` run the identical gate. Activate the local hook with `git config core.hooksPath .githooks`; configuration alone does not prove CI success or hook activation.
 
-## Coding Style & Naming Conventions
+## Style and tests
 
-Use UTF-8, two-space indentation, ES modules, and camelCase names. Use `.mjs` for JavaScript, `.ts` for typed controllers, and `.tsx` for React UI. Keep UI, HTTP, persistence, and host adapters separate. Host UI consumes DSH theme tokens; never edit generated CSS or `integration/plugin/client.js` directly.
+Use UTF-8, two spaces, ES modules and camelCase: `.mjs` JavaScript, `.ts` contracts/controllers, `.tsx` React. Keep UI, HTTP, persistence and host ports separate. No formatter is configured. Never edit generated CSS, `integration/plugin/client.js` or catalog indexes directly.
 
-No formatter is configured. Verification checks whitespace, syntax, tokens, contrast, imports, and host versions. Avoid speculative abstractions and unrelated refactoring.
+Use Node's test runner, `node:assert/strict`, `*.test.mjs` and Playwright. Add failing regressions before fixes; check real behavior, source integrity, ownership, interrupted operations and preserved drafts. Never log credentials. Distinguish discovered, installed, loaded and successfully used states.
 
-## Testing Guidelines
+## Contributions
 
-Use Node's test runner, `node:assert/strict`, and Playwright; name tests `*.test.mjs`. Add failing regression tests before fixes. Verify attribution, reviewed versions, preserved drafts, interrupted requests, archive integrity, and actual workflows. Host tests exclude model credentials; live GitHub reads may use the configured local encrypted token. Never log it. No coverage percentage is established.
-
-## Commit & Pull Request Guidelines
-
-Parent history uses `feat:` and `fix:` prefixes. Use `type: short description` for commits and PR titles; documented types also include `docs`, `test`, `refactor`, and `chore`. Follow `CONTRIBUTING.md` and the templates in `.github/`. Keep commits focused and stage explicit DSH files only.
-
-PRs should describe behavior, validation, and limitations; link issues and include UI screenshots. Preserve unrelated changes. Distinguish local file export from GitHub publication, and metadata sharing from executable resource installation.
+Follow `CONTRIBUTING.md` and `.github/` templates. Use the convention `type: short description` (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`). Preserve unrelated work; stage explicit files only when authorized. Report verification and limits, include UI evidence, preserve attribution, and align affected README translations. Review typed resource bindings before rebuilding indexes.

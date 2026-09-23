@@ -12,6 +12,16 @@ test('client validates management responses before enabling destructive controls
   assert.throws(() => parsePlan({ ...plan, compatibility: { route: 'native', state: 'incompatible', issues: [] } }), /无效/);
 });
 
+test('standard management preserves desired state and requires an explicit adoption or restart notice', () => {
+  const standard = { ...plan, action: 'disable', routes: ['dsh-std'], compatibility: { route: 'dsh-std', state: 'declared', issues: [] }, firstAdoption: true, notice: 'standard-adoption-reloads-all' };
+  assert.equal(parsePlan(standard).notice, standard.notice);
+  assert.throws(() => parsePlan({ ...standard, notice: 'standard-restart-required' }), /无效/);
+  assert.throws(() => parsePlan({ ...standard, firstAdoption: undefined, notice: undefined }), /无效/);
+  const inventory = { schema: 1, profile: 'web', hostVersion: '1.0.0', adapter: 'available', complete: true, items: [{ name: 'test', version: '1', route: 'dsh-std', state: 'restart-required', desired: 'disabled', actual: 'enabled', removable: true, installed: true, toggleable: true }] };
+  assert.equal(parseInventory(inventory).items[0].desired, 'disabled');
+  assert.throws(() => parseInventory({ ...inventory, items: [{ ...inventory.items[0], actual: 'works-perfectly' }] }), /无效/);
+});
+
 test('lost-response retry and concurrent clicks reuse one operation identity', async () => {
   const calls = [];
   const result = { status: 'restart-required', operationId: plan.id, action: 'install', name: 'test', version: '1.0.0', backupCreated: true };

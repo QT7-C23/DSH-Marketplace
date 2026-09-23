@@ -8,6 +8,13 @@ const plugin = { id: 'plugin', revision: 1, type: '插件', bundle: { kind: 'npm
 const slash = { id: 'slash', revision: 2, type: 'Slash', parentId: 'plugin' };
 const catalog = () => [plugin, slash, { id: 'prompt', type: 'Prompt' }];
 const row = (enabled, fiberState) => ({ entryId: 'plan', moduleName: plugin.bundle.name, enabled, fiberState });
+test('discovered npm plugins and themes match their actual host package identity', async () => {
+  const resources = ['插件', '主题'].map((type, i) => ({ id: 'package-' + i, type, revision: 3, packageRef: { name: 'package-' + i, version: '1.0.0' } }));
+  const reader = new PluginAvailability(() => resources, { read: async () => ({ host: [{ moduleName: 'package-1', enabled: true, fiberState: 2 }], presets: [] }) });
+  const snapshot = availabilitySnapshot(await reader.read());
+  assert.equal(snapshot.resources['package-0'].detected, false);
+  assert.deepEqual(snapshot.resources['package-1'].locations, [{ scope: 'host', name: '', isDefault: false, state: 'active' }]);
+});
 
 test('plugin availability reports each real scope and never treats configured presets as running', async () => {
   const reader = new PluginAvailability(catalog, { read: async () => ({ host: [row(false, 2)], presets: [

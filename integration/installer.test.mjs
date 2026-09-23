@@ -4,6 +4,7 @@ import { spawn } from 'node:child_process';
 import { mkdtemp, mkdir, readFile, writeFile, readdir, rm, symlink } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { ProfileInstaller } from './plugin/compatibility/installer.mjs';
+import { randomUUID } from 'node:crypto';
 
 const candidate = (name = '@install-test/native', version = '1.2.3') => ({
   name, version,
@@ -50,6 +51,52 @@ async function journal(f, result) {
   const text = await readFile(join(f.options.folder, result.operationId, 'journal.jsonl'), 'utf8');
   return text.trim().split('\n').map(line => JSON.parse(line));
 }
+
+test('managed profile patches preserve unrelated bytes, share the installer lock and survive a new installer', async t => {
+  const f = await fixture(t, async () => { throw Error('Configuration must not invoke CLI'); });
+  const before = '# existing comment\n- id: user-plugin\n  name: user-plugin\n  disabled: false\n';
+  await writeFile(join(f.dir, 'cordis.patch.yml'), before);
+  const patch = [{ id: 'example', name: '@install-test/native', disabled: true }];
+  const fingerprint = await f.installer.fingerprint();
+  const result = await f.installer.configure('extension-example', patch, fingerprint);
+  assert.equal(result.status, 'restart-required');
+  assert.equal(result.backupCreated, true);
+  const changed = await readFile(join(f.dir, 'cordis.patch.yml'), 'utf8');
+  assert(changed.startsWith(before));
+  assert(changed.includes('"disabled":true'));
+  assert.deepEqual(await readFile(join(f.options.folder, result.operationId, 'backup/cordis.patch.yml'), 'utf8'), before);
+  const reopened = new ProfileInstaller(f.options);
+  assert.equal((await reopened.configure('extension-example', [], fingerprint)).status, 'failed');
+  assert.equal(await readFile(join(f.dir, 'cordis.patch.yml'), 'utf8'), changed);
+  await writeFile(join(f.dir, '.dsh-market-installer.lock'), '{}');
+  assert.equal((await reopened.configure('extension-example', [], await reopened.fingerprint())).status, 'recovery-required');
+  await rm(join(f.dir, '.dsh-market-installer.lock'));
+  assert.equal((await reopened.configure('extension-example', [], await reopened.fingerprint())).status, 'restart-required');
+  assert.equal(await readFile(join(f.dir, 'cordis.patch.yml'), 'utf8'), before);
+});
+
+test('marker-prefix comments do not change the exact owned block or unrelated byte ranges', async t => {
+  const f = await fixture(t);
+  const before = '# dsh-market:extension-example:begin-example\r\n- id: user-plugin\r\n  name: user-plugin\r\n# dsh-market:extension-example:begin\r\n- {"id":"owned","disabled":true}\r\n# dsh-market:extension-example:end\r\n# retained tail\r\n';
+  await writeFile(join(f.dir, 'cordis.patch.yml'), before);
+  const result = await f.installer.configure('extension-example', [{ id: 'owned', disabled: false }], await f.installer.fingerprint());
+  assert.equal(result.status, 'restart-required');
+  const actual = await readFile(join(f.dir, 'cordis.patch.yml'), 'utf8');
+  assert(actual.startsWith(before.slice(0, before.indexOf('# dsh-market:extension-example:begin\r\n'))));
+  assert(actual.endsWith('# retained tail\r\n'));
+  assert(actual.includes('"disabled":false'));
+});
+
+test('an empty profile supports add remove and add again across installer instances', async t => {
+  const f = await fixture(t);
+  await writeFile(join(f.dir, 'cordis.patch.yml'), '[]\n');
+  for (const records of [[{ id: 'owned', disabled: true }], [], [{ id: 'owned', disabled: false }]]) {
+    const installer = new ProfileInstaller(f.options);
+    const result = await installer.configure('extension-example', records, await installer.fingerprint());
+    assert.equal(result.status, 'restart-required');
+    if (!records.length) assert.equal(await readFile(join(f.dir, 'cordis.patch.yml'), 'utf8'), '[]\n');
+  }
+});
 
 function sanitized(result, status, action = 'install') {
   assert.equal(result.status, status);
@@ -369,4 +416,69 @@ test('another Node process cannot bypass the exclusive profile lock', async t =>
     release();
   }
   sanitized(await pending, 'restart-required');
+});
+
+test('recovery projects the last twenty operations with bounded whitelisted metadata only', async t => {
+  const f = await fixture(t);
+  assert.deepEqual(await f.installer.recovery(), { blocked: false, operationId: null, recent: [] });
+  for (let index = 0; index < 23; index++) {
+    const operationId = randomUUID(), dir = join(f.options.folder, operationId);
+    await mkdir(dir, { recursive: true });
+    const event = { schema: 1, operationId, action: 'configure', name: 'mcp-fixture', phase: 'requested',
+      at: new Date(Date.UTC(2026, 0, 1, 0, index)).toISOString(), config: { token: 'private-secret' }, fingerprint: 'a'.repeat(64), folder: f.root };
+    await writeFile(join(dir, 'journal.jsonl'), [event, { ...event, phase: 'restart-required' }].map(row => JSON.stringify(row)).join('\n') + '\n');
+  }
+  const view = await new ProfileInstaller(f.options).recovery();
+  assert.equal(view.blocked, false); assert.equal(view.operationId, null); assert.equal(view.recent.length, 20);
+  assert.equal(new Set(view.recent.map(row => row.operationId)).size, 20);
+  assert(view.recent[0].at > view.recent.at(-1).at);
+  for (const row of view.recent) assert.deepEqual(Object.keys(row).sort(), ['action', 'at', 'name', 'operationId', 'phase']);
+  assert.doesNotMatch(JSON.stringify(view), /private-secret|fingerprint|folder|token|[A-Z]:\\/);
+});
+
+test('recovery is read only and blocks on unresolved operations, unsafe journals and external locks', async t => {
+  const f = await fixture(t), operationId = randomUUID();
+  const lock = join(f.dir, '.dsh-market-installer.lock'), bytes = JSON.stringify({ operationId, folder: 'private-secret' });
+  await writeFile(lock, bytes);
+  assert.deepEqual(await f.installer.recovery(), { blocked: true, operationId, recent: [] });
+  assert.equal(await readFile(lock, 'utf8'), bytes);
+  await rm(lock); // Explicit test operator cleanup, never manager recovery.
+  const dir = join(f.options.folder, operationId);
+  await mkdir(dir, { recursive: true });
+  await writeFile(join(dir, 'journal.jsonl'), JSON.stringify({ schema: 1, operationId, action: 'configure', name: 'mcp-fixture', phase: 'configuring', at: new Date().toISOString() }) + '\n');
+  assert.equal((await f.installer.recovery()).blocked, true);
+  await writeFile(join(dir, 'journal.jsonl'), 'private-secret'.repeat(10000));
+  const blocked = await f.installer.recovery();
+  assert.equal(blocked.blocked, true); assert.doesNotMatch(JSON.stringify(blocked), /private-secret/);
+  assert.equal((await readFile(join(dir, 'journal.jsonl'))).length, 140000);
+});
+
+test('pending cancellation holds the shared profile lock through receipt work and leaves no blocked loser', async t => {
+  const f = await fixture(t);
+  const other = new ProfileInstaller({ ...f.options, folder: join(f.root, 'other-journal') });
+  let called = false;
+  const result = await f.installer.cancelPendingConfiguration('mcp-fixture', async () => {
+    called = true;
+    assert.equal((await other.recovery()).blocked, true);
+    const attempt = await other.configure('mcp-fixture', [{ insert: [] }], await other.fingerprint());
+    assert.equal(attempt.status, 'recovery-required');
+  });
+  assert.equal(called, true); assert.equal(result.status, 'cancelled');
+  assert.equal((await f.installer.recovery()).blocked, false);
+  assert.equal((await other.recovery()).blocked, false);
+  assert.deepEqual((await f.installer.configuration('mcp-fixture')).records, []);
+});
+
+test('recovery rejects journal symlinks and malformed public fields without following unrelated content', async t => {
+  const f = await fixture(t), operationId = randomUUID();
+  const outside = join(f.root, 'outside'), dir = join(f.options.folder, operationId);
+  await mkdir(outside); await mkdir(f.options.folder);
+  await writeFile(join(outside, 'journal.jsonl'), 'private-secret');
+  await symlink(outside, dir, process.platform === 'win32' ? 'junction' : 'dir');
+  assert.deepEqual(await f.installer.recovery(), { blocked: true, operationId, recent: [] });
+  assert.equal(await readFile(join(outside, 'journal.jsonl'), 'utf8'), 'private-secret');
+  await rm(dir); await mkdir(dir);
+  await writeFile(join(dir, 'journal.jsonl'), JSON.stringify({ schema: 1, operationId, action: 'configure',
+    name: '../private-secret', phase: 'failed', at: new Date().toISOString(), fingerprint: 'private-secret' }) + '\n');
+  assert.deepEqual(await f.installer.recovery(), { blocked: true, operationId, recent: [] });
 });

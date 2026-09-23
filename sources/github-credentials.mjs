@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { CommunityError } from '../community/contracts.mjs';
 
 export function validateGitHubToken(token) {
-  if (typeof token !== 'string' || !/^(?:github_pat_|ghp_)[A-Za-z0-9_]{30,245}$/.test(token)) throw new CommunityError(400, 'GitHub 令牌格式不正确');
+  if (typeof token !== 'string' || !/^(?:github_pat_|ghp_|gho_|ghs_)[A-Za-z0-9_]{30,245}$/.test(token)) throw new CommunityError(400, 'GitHub 令牌格式不正确');
   return token;
 }
 function crypt(mode, input) {

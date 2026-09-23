@@ -18,3 +18,13 @@ test('extension management stays behind the same-origin JSON boundary and never 
   assert.equal(failure.status, 500);
   assert.doesNotMatch(await failure.text(), /private|path/);
 });
+
+test('operation history and withdrawal records are read-only and exclude private diagnostics', async () => {
+  const status = { blocked: true, operationId: null, recent: [] };
+  const records = [{ id: 'source-test', reason: 'Author request', issue: 'https://github.com/QT7-C23/DSH-Marketplace/issues/1' }];
+  const handle = createHandler(null, undefined, { withdrawals: () => records }, null, null, null, null, null, null, null, undefined, { recovery: async () => ({ ...status, privatePath: 'not-public' }) });
+  const operations = await handle(new Request('http://localhost/api/community/operations'));
+  assert.equal(operations.status, 200); assert.deepEqual(await operations.json(), status);
+  assert.deepEqual(await (await handle(new Request('http://localhost/api/community/withdrawals'))).json(), records);
+  for (const route of ['operations', 'withdrawals']) assert.equal((await handle(new Request('http://localhost/api/community/' + route, { method: 'POST' }))).status, 405);
+});

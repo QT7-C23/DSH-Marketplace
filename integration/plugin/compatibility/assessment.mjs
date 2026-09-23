@@ -8,6 +8,10 @@ export function assessCompatibility(candidate, environment, route, adapter) {
   if (!route || !candidate.routes.includes(route)) return result('route-required');
   // Both runtimes auto-discover their own declaration. A route label cannot prevent double activation.
   if (candidate.routes.length > 1) return result('incompatible', ['dual-entry']);
+  if (environment.hostVersion === '0.1.5-rc.2' && candidate.name === 'dsh-theme-machine' && candidate.version === '0.1.3') return result('incompatible', ['theme-startup']);
+  const observed = environment.hostVersion !== '0.1.5-rc.2' ? []
+    : candidate.name === 'dsh-skin-galactic-opera' && candidate.version === '0.2.1' ? ['theme-contrast']
+    : candidate.name === '@kubor/dsh-bloom-theme' && candidate.version === '0.12.0' ? ['theme-interaction'] : [];
   const range = candidate.packageManifest.engines?.dsh;
   if (range !== undefined && (!semver.validRange(range) || !semver.valid(environment.hostVersion) || !semver.satisfies(environment.hostVersion, range))) return result('incompatible', ['host-version']);
   const node = candidate.packageManifest.engines?.node;
@@ -19,7 +23,7 @@ export function assessCompatibility(candidate, environment, route, adapter) {
     if (!actual && candidate.packageManifest.peerDependenciesMeta?.[name]?.optional) { peersVerified = false; continue; }
     if (!semver.validRange(required) || !semver.valid(actual) || !semver.satisfies(actual, required)) return result('incompatible', ['host-version']);
   }
-  if (route === 'native') return result(range || peersVerified ? 'declared' : 'unverified');
+  if (route === 'native') return result(range || peersVerified ? 'declared' : 'unverified', observed);
   if (!adapter) return result('adapter-required');
   const manifest = candidate.standardManifest;
   if (!manifest || manifest.facets.host.apiVersion !== 'v1alpha1') return result('incompatible', ['host-facet-version']);

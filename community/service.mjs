@@ -18,11 +18,27 @@ export class Community {
   close() { if (!this.#closed) { this.#db.close(); this.#closed = true; } }
   replaceCatalog(items) { this.#items = new Map(items.map(item => [item.id, structuredClone(item)])); }
   /** @returns {import('./contracts.mjs').Snapshot} */
-  snapshot() {
-    const catalog = structuredClone([...this.#items.values()]);
+  snapshot({ summaries = false } = {}) {
+    const catalog = structuredClone([...this.#items.values()].map(item => {
+      if (!summaries || !item.serverDefinition) return item;
+      const { serverDefinition, body, ...summary } = item;
+      return { ...summary, body: '', hasDetails: true };
+    }));
     const stats = Object.fromEntries(catalog.map(item => [item.id, { downloads: 0 }]));
     for (const row of this.#db.prepare('SELECT resource_id,total FROM catalog_downloads').all()) if (stats[row.resource_id]) stats[row.resource_id].downloads = row.total;
     return { schema: 2, catalog, stats };
+  }
+  resource(id, revision) {
+    const item = this.#items.get(id);
+    if (!item || item.revision !== revision) throw new CommunityError(409, '该版本不可用，请刷新后重试');
+    return structuredClone(item);
+  }
+  statisticsResources(ids) {
+    return ids.flatMap(id => {
+      const item = this.#items.get(id);
+      return item ? [{ id, url: item.url, ...(item.packageRef ? { packageRef: structuredClone(item.packageRef) } : {}),
+        ...(item.bundle?.kind === 'npm-package' ? { bundle: { kind: 'npm-package', name: item.bundle.name, version: item.bundle.version } } : {}) }] : [];
+    });
   }
   mutate(command, preparedFile) {
     if (command?.action !== 'download') throw new CommunityError(400, '不支持的操作');

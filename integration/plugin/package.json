@@ -1,18 +1,20 @@
 {
   "name": "dsh-market-integration",
-  "version": "0.1.0",
+  "version": "0.2.0-alpha.1",
   "license": "MIT",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./index.mjs",
     "./client": "./client.js",
+    "./standard-loader": "./compatibility/standard-loader.mjs",
     "./package.json": "./package.json"
   },
   "dsh": {
     "client": {
       "platform": "web",
       "inject": [
+        "@deepseek-ai/dsh-api-gateway",
         "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-ui-conversation",

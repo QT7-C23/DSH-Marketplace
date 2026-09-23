@@ -72,3 +72,18 @@ test('removal protects the shared adapter and direct reverse dependencies', asyn
   await assert.rejects(manager.prepare({ action: 'prepare-remove', name: 'example-native' }), /依赖/);
   await assert.rejects(manager.prepare({ action: 'prepare-remove', name: 'not-installed' }), /安装/);
 });
+
+test('native enable/disable plans preserve preview boundaries and dependency protection', async () => {
+  const f = fixture(); f.options.packages.read = async () => [candidate()];
+  const calls = [];
+  f.options.native.prepareToggle = async (name, enabled) => ({ name, enabled, private: 'not-public' });
+  f.options.native.toggle = async (plan, fingerprint) => { calls.push({ plan, fingerprint }); return { status: 'restart-required', action: plan.enabled ? 'enable' : 'disable', name: plan.name }; };
+  const manager = new ExtensionManager(f.options);
+  const plan = await manager.prepare({ action: 'prepare-disable', name: 'example-native' });
+  assert.equal(plan.action, 'disable'); assert.equal(calls.length, 0);
+  assert.doesNotMatch(JSON.stringify(plan), /not-public/);
+  await manager.execute({ planId: plan.id, requestId: '42345678-1234-1234-1234-123456789012' });
+  assert.deepEqual(calls[0], { plan: { name: 'example-native', enabled: false, private: 'not-public' }, fingerprint: 'original' });
+  f.options.packages.read = async () => [candidate(), { ...candidate(), name: 'consumer', packageManifest: { dependencies: { 'example-native': '1.0.0' } } }];
+  await assert.rejects(manager.prepare({ action: 'prepare-disable', name: 'example-native' }), /依赖/);
+});

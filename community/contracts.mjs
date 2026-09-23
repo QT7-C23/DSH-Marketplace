@@ -1,6 +1,6 @@
 /** Shared resource contract used by the server and typed client. */
 /** @typedef {{type:string,title:string,summary:string,version:string,body:string,url:string}} Publication */
-/** @typedef {Publication & {id:string,owner:string,author:string,revision:number,status:string,source:string,updatedAt:string,license?:string,language?:string,sourceId?:string,requirements?:string,parentId?:string,registryUrl?:string,serverDefinition?:object,bundle?:import('../sources/contracts.mjs').Bundle}} Resource */
+/** @typedef {Publication & {id:string,owner:string,author:string,revision:number,status:string,source:string,updatedAt:string,license?:string,language?:string,sourceId?:string,requirements?:string,parentId?:string,command?:string,aliasIds?:string[],hasDetails?:boolean,registryUrl?:string,serverDefinition?:object,packageRef?:{name:string,version:string},bundle?:import('../sources/contracts.mjs').Bundle}} Resource */
 /** @typedef {{downloads:number,saves?:number,ratingCount?:number,ratingAverage?:number|null}} Stats */
 /** @typedef {{filename:string,mime:string,content:string,encoding?:'base64'}} ExportFile */
 /** @typedef {{schema:2,catalog:Resource[],stats:Record<string,Stats>}} Snapshot */

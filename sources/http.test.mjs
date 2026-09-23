@@ -6,6 +6,29 @@ import { createHandler } from '../community/http.mjs';
 import { exportFile } from '../community/contracts.mjs';
 import seed from './catalog.json' with { type: 'json' };
 
+test('large catalog lists omit MCP definitions while selected resource reads retain the exact version', async t => {
+  const resource = seed.find(row => row.id === 'mcp').entries[0];
+  const service = new Community(':memory:', [resource]); t.after(() => service.close());
+  const handle = createHandler(service);
+  const list = await (await handle(new Request('http://localhost/api/community/read'))).json();
+  assert.equal(list.catalog[0].serverDefinition, undefined);
+  assert.equal(list.catalog[0].body, '');
+  assert.equal(list.catalog[0].hasDetails, true);
+  const full = await handle(new Request(`http://localhost/api/community/resource?id=${resource.id}&revision=${resource.revision}`));
+  assert.equal(full.status, 200); assert.deepEqual(await full.json(), resource);
+  assert.equal((await handle(new Request(`http://localhost/api/community/resource?id=${resource.id}&revision=999999`))).status, 409);
+});
+
+test('repository Star requests pass only bounded selected resource IDs to the reader', async t => {
+  const service = new Community(':memory:'); t.after(() => service.close());
+  let selected;
+  const handle = createHandler(service, async ids => { selected = ids; return {}; });
+  assert.equal((await handle(new Request('http://localhost/api/community/stars?ids=one,two'))).status, 200);
+  assert.deepEqual(selected, ['one', 'two']);
+  assert.equal((await handle(new Request('http://localhost/api/community/stars?ids=' + Array.from({ length: 61 }, (_, i) => 'id-' + i).join(',')))).status, 400);
+  assert.equal((await handle(new Request('http://localhost/api/community/stars?ids=https://private.example'))).status, 400);
+});
+
 test('source download HTTP counts prepared archives once and rejects cross-origin sync', async t => {
   const item = seed.find(row => row.id === 'dsh').entries.find(item => item.bundle);
   const service = new Community(':memory:', [item]); t.after(() => service.close());

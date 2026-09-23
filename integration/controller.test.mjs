@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createMarket as create, httpPort } from './plugin/market/controller.ts';
+import { createMarket as create, httpPort, savedUpdates } from './plugin/market/controller.ts';
 import { browserLocalPort } from './plugin/market/local.mjs';
 import { githubPrompts } from '../catalog/resources.mjs';
 import { downloadFile } from '../community/download.mjs';
@@ -9,6 +9,63 @@ import { SOURCE_DEFINITIONS } from '../sources/definitions.mjs';
 const createMarket = (port, local = localPort()) => create({ readStars: async () => ({}), readSources: async () => [], syncSource: async () => [], setSourceAutomatic: async () => [], ...port }, local);
 const data = () => ({ schema: 2, catalog: [], stats: {} });
 const editor = { type: 'Prompt', title: '私有内容', summary: '尚未发布', body: '仅我可见', version: '1', url: '' };
+test('source alias changes offer an explicit reviewed replacement without duplicate favorites or lost ratings', async () => {
+  const old = { ...githubPrompts[0], id: 'source-npm-old', revision: 20, version: '1.0.0' };
+  const canonical = { ...old, id: 'source-community-current', aliasIds: [old.id], revision: 1, version: '1.1.0' };
+  const model = createMarket({ read: async () => ({ ...data(), catalog: [canonical] }) });
+  model.saveLocal(old); model.rateLocal(old.id, 4); await model.refresh();
+  assert.deepEqual(model.getSnapshot().local.saved, [old]);
+  assert.deepEqual(savedUpdates([old], [canonical]), [{ saved: old, latest: canonical }]);
+  model.saveLocal(canonical);
+  assert.deepEqual(model.getSnapshot().local.saved, [old], 'saving an alias is not automatic version replacement');
+  model.saveLocal(canonical, true);
+  assert.deepEqual(model.getSnapshot().local.saved, [canonical]);
+  assert.equal(model.getSnapshot().local.ratings[canonical.id], 4);
+});
+test('updating a saved MCP summary preserves full content after later withdrawal and failed hydration', async () => {
+  const original = { ...githubPrompts[0], type: 'MCP', id: 'source-mcp-kept', body: 'original', serverDefinition: { name: 'org/server', version: '1.0.0' } };
+  const current = { ...original, revision: 2, body: 'new instructions', serverDefinition: { name: 'org/server', version: '2.0.0' } };
+  const { serverDefinition, ...summary } = current;
+  summary.body = ''; summary.hasDetails = true;
+  let live = [summary], failed = false;
+  const model = createMarket({ read: async () => ({ ...data(), catalog: live }), readResource: async () => { if (failed) throw Error('offline'); return current; } });
+  model.saveLocal(original); await model.refresh();
+  failed = true;
+  assert.equal(await model.saveLocal(summary, true), false);
+  assert.deepEqual(model.getSnapshot().local.saved[0], original);
+  failed = false;
+  assert.equal(await model.saveLocal(summary, true), true);
+  assert.deepEqual(model.getSnapshot().local.saved[0], current);
+  live = []; await model.refresh();
+  await model.open(model.getSnapshot().local.saved[0]);
+  assert.equal(model.getSnapshot().detail.body, 'new instructions');
+  assert.deepEqual(JSON.parse((await model.download(current)).content), current.serverDefinition);
+});
+test('leaving a pending detail restores navigation and discards its late result', async () => {
+  let finish;
+  const item = { ...githubPrompts[0], hasDetails: true };
+  const model = createMarket({ readResource: () => new Promise(resolve => { finish = resolve; }) });
+  const pending = model.open(item);
+  assert.equal(model.getSnapshot().detailLoading, true);
+  model.navigate('saved');
+  assert.equal(model.getSnapshot().detailLoading, false);
+  finish(item); await pending;
+  assert.equal(model.getSnapshot().view, 'saved');
+  assert.equal(model.getSnapshot().detail, null);
+});
+test('changing visible resources during a slow Star request loads the newly visible page afterwards', async () => {
+  let finish;
+  const seen = [];
+  const model = createMarket({ read: async () => data(), readStars: async ids => {
+    seen.push(ids);
+    if (seen.length === 1) await new Promise(resolve => { finish = resolve; });
+    return {};
+  } });
+  const first = model.refreshStars(['first-page']);
+  await model.refreshStars(['second-page']);
+  finish(); await first;
+  assert.deepEqual(seen, [['first-page'], ['second-page']]);
+});
 test('language, attribution and personal ratings persist without backend identity writes', async () => {
   const writes = [];
   const local = localPort();

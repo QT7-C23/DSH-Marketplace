@@ -6,7 +6,7 @@
 
 **License and warranty.** DSH Marketplace's original code and documentation are provided under the [MIT License](LICENSE), including its warranty disclaimer and limitation of liability. The software is provided “AS IS”, without warranty of any kind. To the extent permitted by applicable law, the authors and copyright holders are not liable for claims or damages arising from its use. This explanatory notice does not replace or modify MIT or any applicable third-party license. Mandatory rights and liabilities under applicable law remain unaffected.
 
-**Development status and use.** This is a local development version, with incomplete installation, automatic discovery, and public community workflows. Tests cover specific scenarios and host versions; they do not establish universal compatibility, security, fitness, or uninterrupted availability. Keep backups and review changes before using the software with important data. Downloading a package does not mean it has been installed, activated, or evaluated for safety.
+**Development status and use.** This is an early release. Installation, discovery, resource management and community workflows have explicit supported boundaries described in the README and release notes. Tests cover specific scenarios and host versions; they do not establish universal compatibility, security, fitness, or uninterrupted availability. Keep backups and review changes before using the software with important data. Downloading a package does not mean it has been installed, activated, or evaluated for safety.
 
 **Third-party resources and AI output.** Resources may contain code, instructions, dependencies, or references to external services. Listing or checking a file's integrity is not an endorsement, a security audit, or a guarantee of results. Review the resource, its permissions, license, data recipients, and potential service charges before use. Prompt and model output may be inaccurate or unsuitable and should be checked before being relied upon. External services control their own terms, authentication, content, and availability.
 
@@ -20,7 +20,7 @@
 
 **许可与保证。** DSH Marketplace 的原创代码与文档采用 [MIT 协议](LICENSE)，适用其中的保证排除和责任限制。软件按“现状”提供，不附带任何保证。在适用法律允许的范围内，作者和版权人不对使用软件所产生的索赔或损害承担责任。本说明不替代或修改 MIT 及适用的第三方许可证，也不排除适用法律规定的强制性权利与责任。
 
-**开发状态与使用。** 当前为本机开发版本，安装、自动发现和公共社区流程尚未完成。测试仅覆盖特定场景与宿主版本，不代表普遍兼容、安全、适合特定用途或持续可用。处理重要数据前，请保留备份并核对变更。下载成功不代表已经安装、启用或完成安全评估。
+**开发状态与使用。** 当前为早期版本，安装、发现、资源管理和社区流程的支持边界见 README 与发布说明。测试仅覆盖特定场景与宿主版本，不代表普遍兼容、安全、适合特定用途或持续可用。处理重要数据前，请保留备份并核对变更。下载成功不代表已经安装、启用或完成安全评估。
 
 **第三方资源与 AI 输出。** 资源可能包含代码、指令、依赖或外部服务引用。收录和完整性校验不构成推荐背书、安全审计或效果保证。使用前请核查资源内容、所需权限、许可、数据接收方以及可能产生的服务费用。Prompt 和模型输出可能错误或不适用，采用前应自行核验。外部服务的条款、认证、内容和可用性由各自提供方控制。
 
@@ -34,7 +34,7 @@
 
 **ライセンスと保証。** DSH Marketplace のオリジナルのコードと文書には、保証の否認と責任制限を含む [MIT ライセンス](LICENSE) が適用されます。本ソフトウェアは「現状のまま」提供され、いかなる保証もありません。適用法令が認める範囲で、著作者および著作権者は利用に起因する請求や損害について責任を負いません。この説明は MIT または第三者のライセンスを置き換えたり変更したりするものではなく、法令上の強行規定による権利や責任を排除しません。
 
-**開発状況と利用。** 現在はローカル開発版で、インストール、自動検出、公開コミュニティの機能は未完成です。テストは特定の条件とホストバージョンを対象とし、あらゆる環境での互換性、安全性、適合性、継続的な利用可能性を保証しません。重要なデータで利用する前に、バックアップを取り、変更内容を確認してください。ダウンロードの成功は、インストール、有効化、安全性評価の完了を意味しません。
+**開発状況と利用。** 現在は初期版です。インストール、自動検出、リソース管理、コミュニティ機能の対応範囲は README とリリースノートに記載しています。テストは特定の条件とホストバージョンを対象とし、あらゆる環境での互換性、安全性、適合性、継続的な利用可能性を保証しません。重要なデータで利用する前に、バックアップを取り、変更内容を確認してください。ダウンロードの成功は、インストール、有効化、安全性評価の完了を意味しません。
 
 **第三者リソースと AI 出力。** リソースにはコード、指示、依存関係、外部サービスへの参照が含まれる場合があります。掲載やファイルの完全性確認は、推奨、安全性監査、結果の保証ではありません。利用前に内容、権限、ライセンス、データの送信先、発生し得るサービス料金を確認してください。Prompt やモデルの出力は不正確または不適切な場合があるため、採用前の確認が必要です。外部サービスの条件、認証、内容、提供状況は各提供者が管理します。
 

@@ -1,8 +1,10 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { constants } from 'node:fs';
-import { lstat, mkdir, open, realpath, unlink } from 'node:fs/promises';
+import { lstat, mkdir, open, opendir, realpath, rename, unlink } from 'node:fs/promises';
 import { isAbsolute, join, resolve } from 'node:path';
+import { managedPatch, readManagedPatch } from './profile-patch.mjs';
+import { operationPhases as phases, operationActions } from '../../../community/operation-status.mjs';
 
 const profileFiles = ['package.json', 'pnpm-lock.yaml', 'cordis.patch.yml'];
 const maxFileBytes = 16 * 1024 * 1024;
@@ -13,6 +15,20 @@ const registry = 'https://registry.npmjs.org';
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 const own = (value, key) => Object.hasOwn(value, key);
 const reserved = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
+const operationPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/;
+const hashPattern = /^[a-f0-9]{64}$/;
+const settled = row => ['failed', 'restart-required', 'cancelled'].includes(row.phase)
+  || row.phase === 'recovery-required' && row.reason === 'profile-locked';
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+  return value;
+}
+function configurationDigest(records) {
+  const text = JSON.stringify(canonical(records));
+  if (!Array.isArray(records) || !text || text.length > 256 * 1024) throw Error('Invalid configuration evidence');
+  return sha256(text);
+}
 
 function packageName(value) {
   return typeof value === 'string' && value.length <= 214
@@ -61,13 +77,13 @@ async function directory(path, create = false) {
 
 // Refuse links and oversized files at the writable profile boundary. A bounded
 // buffer also prevents a concurrently growing file from exhausting memory.
-async function bytesAt(path) {
+async function bytesAt(path, limit = maxFileBytes) {
   let stat;
   try { stat = await lstat(path); } catch (error) {
     if (error.code === 'ENOENT') return null;
     throw error;
   }
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > maxFileBytes) throw Error('Unsafe file');
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > limit) throw Error('Unsafe file');
   const handle = await open(path, constants.O_RDONLY | (constants.O_NOFOLLOW ?? 0));
   try {
     const current = await handle.stat();
@@ -215,6 +231,100 @@ export class ProfileInstaller {
     return this.#operate('remove', prepared, expectedFingerprint);
   }
 
+  async configure(key, records, expectedFingerprint, claim) {
+    let prepared;
+    try {
+      prepared = { name: key, records: JSON.parse(JSON.stringify(records)) };
+      managedPatch(Buffer.from('[]\n'), key, prepared.records);
+      configurationDigest(prepared.records);
+      if (claim !== undefined) {
+        if (!hashPattern.test(claim?.owner)) throw Error();
+        prepared.owner = claim.owner;
+        prepared.previousDigest = configurationDigest(claim.previous);
+      }
+    }
+    catch { prepared = null; }
+    return this.#operate('configure', prepared, expectedFingerprint);
+  }
+
+  /** Private port read: optional claim checks journal evidence, never byte equality alone. */
+  async configuration(key, claim) {
+    const snapshot = await this.#snapshot();
+    const current = { fingerprint: fingerprintOf(snapshot), records: readManagedPatch(snapshot.find(row => row.name === 'cordis.patch.yml').bytes, key) };
+    if (claim === undefined) return current;
+    const history = await this.#history();
+    const operation = history.operations.find(op => op.last.action === 'configure' && op.last.name === key && op.plan);
+    const plan = operation?.plan;
+    const owned = !history.unsafe && hashPattern.test(claim?.owner) && plan?.owner === claim.owner
+      && plan.profile === sha256(JSON.stringify([this.#home, this.#profile]))
+      && plan.previousDigest === configurationDigest(claim.previous) && plan.nextDigest === configurationDigest(claim.next)
+      && hashPattern.test(plan.beforeFingerprint) && plan.afterFingerprint === current.fingerprint
+      && configurationDigest(current.records) === plan.nextDigest
+      && ['restart-required', 'recovery-required'].includes(operation.last.phase)
+      && (!history.lockId || history.lockId === operation.last.operationId)
+      && history.operations.every(op => op === operation || settled(op.last));
+    return { ...current, blocked: history.blocked, owned: Boolean(owned) };
+  }
+
+  /** Executes receipt cancellation only while the shared profile lock guards an empty block. */
+  async cancelPendingConfiguration(key, cancel) {
+    managedPatch(Buffer.from('[]\n'), key, []);
+    if (typeof cancel !== 'function') throw Error('Invalid cancellation');
+    return this.#operate('cancel', { name: key, cancel }, await this.fingerprint());
+  }
+
+  async #history(ignoreOperationId) {
+    const history = { blocked: false, unsafe: false, lockId: null, operationId: null, operations: [] };
+    const block = id => { history.blocked = true; history.operationId ??= id ?? null; };
+    try {
+      await this.#snapshot();
+      const lock = await bytesAt(join(this.#home, 'profiles', this.#profile, lockName), 4096);
+      if (lock) {
+        const id = JSON.parse(lock.toString('utf8')).operationId;
+        if (!operationPattern.test(id)) throw Error();
+        if (id !== ignoreOperationId) { history.lockId = id; block(id); }
+      }
+      await directory(this.#folder);
+      let folder;
+      try { folder = await opendir(this.#folder); } catch (error) { if (error.code === 'ENOENT') return history; throw error; }
+      let count = 0;
+      for await (const entry of folder) {
+        if (++count > 1024) throw Error();
+        if (!operationPattern.test(entry.name)) continue;
+        if (entry.name === ignoreOperationId) continue;
+        try {
+          const dir = join(this.#folder, entry.name);
+          await directory(dir);
+          const bytes = await bytesAt(join(dir, 'journal.jsonl'), 64 * 1024);
+          if (!bytes?.length || bytes.at(-1) !== 10) throw Error();
+          const lines = bytes.toString('utf8').trim().split('\n');
+          if (lines.length > 32) throw Error();
+          const events = lines.map(line => JSON.parse(line));
+          for (const row of events) {
+            if (row.schema !== 1 || row.operationId !== entry.name || !operationActions.includes(row.action)
+              || !packageName(row.name) || !phases.includes(row.phase) || typeof row.at !== 'string'
+              || row.at.length !== 24 || new Date(row.at).toISOString() !== row.at
+              || row.action !== events[0].action || row.name !== events[0].name) throw Error();
+          }
+          const last = events.at(-1), plan = events.findLast(row => row.phase === 'configuring');
+          history.operations.push({ last, plan });
+          if (!settled(last)) block(entry.name);
+        } catch { history.unsafe = true; block(entry.name); }
+      }
+    } catch { history.unsafe = true; block(null); }
+    history.operations.sort((a, b) => b.last.at.localeCompare(a.last.at) || b.last.operationId.localeCompare(a.last.operationId));
+    return history;
+  }
+
+  /** Read-only, sanitized projection; never follows journal/lock supplied paths or unlocks. */
+  async recovery() {
+    const history = await this.#history();
+    return { blocked: history.blocked, operationId: history.operationId,
+      recent: history.operations.slice(0, 20).map(({ last }) => ({
+        operationId: last.operationId, action: last.action, name: last.name, phase: last.phase, at: last.at,
+      })) };
+  }
+
   async #execute(args, folder) {
     if (this.#run) {
       let timer;
@@ -301,6 +411,29 @@ export class ProfileInstaller {
         await record('failed', { reason: 'stale-fingerprint' });
         return result;
       }
+      if (action === 'cancel') {
+        if ((await this.#history(result.operationId)).blocked
+          || readManagedPatch(before.find(row => row.name === 'cordis.patch.yml').bytes, prepared.name).length) {
+          await record('failed', { reason: 'pending-cancellation-blocked' });
+          return result;
+        }
+        await record('cancelling');
+        if (fingerprintOf(await this.#snapshot()) !== expectedFingerprint) {
+          await record('failed', { reason: 'external-change-before-cancellation' });
+          return result;
+        }
+        invoked = true;
+        await prepared.cancel();
+        result.status = 'cancelled';
+        await record('cancelled');
+        return result;
+      }
+      if (action === 'configure' && prepared.owner
+        && ((await this.#history(result.operationId)).blocked
+          || configurationDigest(readManagedPatch(before.find(row => row.name === 'cordis.patch.yml').bytes, prepared.name)) !== prepared.previousDigest)) {
+        await record('failed', { reason: 'configuration-ownership-precondition' });
+        return result;
+      }
       const manifest = manifestFrom(before);
       if (action === 'remove') {
         if (!manifest || !own(manifest.dependencies ?? {}, prepared.name)) {
@@ -319,6 +452,26 @@ export class ProfileInstaller {
       await durable(join(operationFolder, 'backup.json'), JSON.stringify({ schema: 1, fingerprint: expectedFingerprint, files: backup }));
       result.backupCreated = true;
       await record('backed-up');
+      if (action === 'configure') {
+        const next = managedPatch(before.find(row => row.name === 'cordis.patch.yml').bytes, prepared.name, prepared.records);
+        const temporary = join(dir, `.dsh-market-patch-${result.operationId}.tmp`);
+        await durable(temporary, next);
+        try {
+          await record('configuring', {
+            profile: sha256(JSON.stringify([this.#home, this.#profile])), owner: prepared.owner ?? null,
+            previousDigest: configurationDigest(readManagedPatch(before.find(row => row.name === 'cordis.patch.yml').bytes, prepared.name)),
+            nextDigest: configurationDigest(prepared.records), beforeFingerprint: expectedFingerprint,
+            afterFingerprint: fingerprintOf(before.map(row => row.name === 'cordis.patch.yml' ? { ...row, bytes: next } : row)),
+          });
+          if (fingerprintOf(await this.#snapshot()) !== expectedFingerprint) { await record('failed', { reason: 'external-change-before-dispatch' }); return result; }
+          invoked = true;
+          await rename(temporary, join(dir, 'cordis.patch.yml'));
+          const actual = await bytesAt(join(dir, 'cordis.patch.yml'));
+          result.status = actual?.equals(next) ? 'restart-required' : 'recovery-required';
+          await record(result.status, { reason: 'profile-configured', afterFingerprint: fingerprintOf(await this.#snapshot()) });
+          return result;
+        } finally { try { await unlink(temporary); } catch (error) { if (error.code !== 'ENOENT') throw error; } }
+      }
       const args = ['plugin', '--profile', this.#profile, action === 'install' ? 'add' : 'remove',
         action === 'install' ? `${prepared.name}@${prepared.version}` : prepared.name,
         '--ignore-scripts', ...(action === 'install' ? ['--save-exact'] : []), `--registry=${registry}`];

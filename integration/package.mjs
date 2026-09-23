@@ -10,7 +10,7 @@ import { buildClient } from './build.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const invoke = promisify(execFile);
-const publicFiles = ['LICENSE', 'DISCLAIMER.md', 'THIRD_PARTY_NOTICES.md', 'scripts/github-secret.ps1', 'sources/licenses/anthropic-apache-2.0.txt', 'catalog/LICENSE-CC0.txt', 'docs/images/marketplace.png'];
+const publicFiles = ['LICENSE', 'DISCLAIMER.md', 'THIRD_PARTY_NOTICES.md', 'scripts/github-secret.ps1', 'sources/licenses/anthropic-apache-2.0.txt', 'catalog/LICENSE-CC0.txt', 'docs/images/marketplace.png', 'integration/maintenance.mjs'];
 
 async function bundledLicenses(inputs, stage) {
   const packages = new Map();
@@ -46,6 +46,7 @@ export async function buildPackage() {
   const client = await buildClient();
   const files = new Set([...Object.keys(graph.metafile.inputs), ...publicFiles]);
   for (const name of await readdir(path.join(root, 'licenses'))) files.add(`licenses/${name}`);
+  for (const name of await readdir(path.join(root, 'sources/licenses'))) if (name.endsWith('.txt')) files.add(`sources/licenses/${name}`);
   for (const name of await readdir(path.join(root, 'catalog/prompts'))) if (name.endsWith('.json')) files.add(`catalog/prompts/${name}`);
   for (const relative of files) {
     const file = path.resolve(root, relative);
@@ -66,7 +67,7 @@ export async function buildPackage() {
     ...plugin, description: 'Community resource marketplace for DeepSeek Harness',
     repository: { type: 'git', url: 'https://github.com/QT7-C23/DSH-Marketplace.git' },
     engines: { node: '>=24', dsh: '0.1.5-rc.2' },
-    exports: { '.': './integration/plugin/index.mjs', './client': './integration/plugin/client.js', './package.json': './package.json' },
+    exports: { '.': './integration/plugin/index.mjs', './client': './integration/plugin/client.js', './standard-loader': './integration/plugin/compatibility/standard-loader.mjs', './package.json': './package.json' },
     dsh: { ...plugin.dsh, bundle: { patch: './cordis.patch.yml' } },
     peerDependencies: { '@deepseek-ai/dsh-llm': '0.1.5-rc.2' },
     dependencies: { '@dsh-std/core': '0.1.1-rc.2', '@dsh-std/manifest': '0.1.1-rc.3', fflate: '0.8.3', semver: '7.7.2', yaml: '2.9.1' },
@@ -78,7 +79,7 @@ export async function buildPackage() {
   }
   assert(!files.has('integration/plugin/package.json'), 'A package must not contain a second frontend identity');
   await writeFile(path.join(stage, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-  await writeFile(path.join(stage, 'cordis.patch.yml'), '- insert:\n    - id: community-market\n      name: dsh-market-integration\n      config:\n        profile: web\n');
+  await writeFile(path.join(stage, 'cordis.patch.yml'), '- insert:\n    - id: community-market\n      name: dsh-market-integration\n      config:\n        profile: web\n        standardLoader: package\n');
   await writeFile(path.join(stage, 'BUNDLED_DEPENDENCIES.json'), JSON.stringify(await bundledLicenses(client.inputs, stage), null, 2) + '\n');
   const npm = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
   const { stdout } = await invoke(process.execPath, [npm, 'pack', '--ignore-scripts', '--json', '--pack-destination', destination], { cwd: stage, windowsHide: true, timeout: 60000, maxBuffer: 2 * 1024 * 1024 });

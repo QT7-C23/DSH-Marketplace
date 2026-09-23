@@ -8,6 +8,41 @@ import { randomUUID } from 'node:crypto';
 import { Community } from './service.mjs';
 import { createHandler } from './http.mjs';
 import { githubPrompts } from '../catalog/resources.mjs';
+import { registryEntries } from '../sources/community.mjs';
+import sourceCatalog from '../sources/catalog.json' with { type: 'json' };
+
+test('visible npm statistics resolve only catalog identities and never return executable definitions', async t => {
+  const item = { ...githubPrompts[0], packageRef: { name: '@example/plugin', version: '1.0.0' }, serverDefinition: { secret: 'not-for-metrics' } };
+  const service = new Community(':memory:', [item]); t.after(() => service.close());
+  assert.deepEqual(service.statisticsResources([item.id, 'unknown']), [{ id: item.id, url: item.url, packageRef: item.packageRef }]);
+  const calls = [];
+  const handle = createHandler(service, undefined, null, null, null, null, null, null, null, null, async ids => { calls.push(ids); return { marker: 'npm' }; });
+  const response = await handle(new Request('http://localhost/api/community/npm-downloads?ids=' + item.id));
+  assert.equal(response.status, 200); assert.deepEqual(await response.json(), { marker: 'npm' });
+  assert.deepEqual(calls, [[item.id]]);
+  assert.equal((await handle(new Request('http://localhost/api/community/npm-downloads?ids=https://evil.example'))).status, 400);
+});
+
+test('community-reviewed MCP entries export the exact server definition through HTTP', async t => {
+  const original = sourceCatalog.find(row => row.id === 'mcp').entries[0];
+  const [item] = registryEntries({ schema: 1, entries: [{ schema: 1, id: 'reviewed-server', type: 'MCP', title: 'Reviewed server', summary: 'Server description', body: 'Publisher information', author: 'original-author', license: 'MIT', language: 'en', version: original.version, url: original.url, serverDefinition: original.serverDefinition }], removals: [] }).entries;
+  const service = new Community(':memory:', [item]); t.after(() => service.close());
+  const response = await createHandler(service)(new Request('http://localhost/api/community', { method: 'POST', headers: { origin: 'http://localhost', 'x-community-request': '1', 'content-type': 'application/json' }, body: JSON.stringify({ action: 'download', id: item.id, baseRevision: item.revision, requestId: randomUUID() }) }));
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse((await response.json()).content), original.serverDefinition);
+});
+
+test('the npm HTTP boundary forwards browser cancellation to the statistics reader', async t => {
+  const service = new Community(':memory:', githubPrompts); t.after(() => service.close());
+  const abort = new AbortController(); let received;
+  const handle = createHandler(service, undefined, null, null, null, null, null, null, null, null, (_ids, signal) => {
+    received = signal;
+    return new Promise(resolve => signal.addEventListener('abort', () => resolve({}), { once: true }));
+  });
+  const pending = handle(new Request('http://localhost/api/community/npm-downloads?ids=' + githubPrompts[0].id, { signal: abort.signal }));
+  assert.equal(received.aborted, false); abort.abort();
+  assert.equal((await pending).status, 200); assert.equal(received.aborted, true);
+});
 
 test('public catalog keeps durable download counts without accounts or publication endpoints', async t => {
   const file = path.join(mkdtempSync(path.join(os.tmpdir(), 'dsh-public-')), 'market.sqlite');

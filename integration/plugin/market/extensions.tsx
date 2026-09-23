@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dialog, Empty, Field } from './components';
 import { useLanguage } from './i18n';
-import { ExtensionClient, type ExtensionInventory, type ExtensionPlan, type ExtensionResult } from './extensions.mjs';
+import { OperationHistory } from './management-history';
+import { ExtensionClient, type ExtensionInventory, type ExtensionPlan, type ExtensionResult, type InstalledExtension } from './extensions.mjs';
 
 export function Extensions({ visible, initialSpec }: { visible: boolean; initialSpec: string }) {
   const { language, t, text } = useLanguage();
@@ -15,6 +16,7 @@ export function Extensions({ visible, initialSpec }: { visible: boolean; initial
   const [reading, setReading] = useState(false);
   const [revision, setRevision] = useState(0);
   const guard = useRef(false);
+  const shouldEnable = (item: InstalledExtension) => (item.desired || item.state) === 'disabled';
   useEffect(() => { if (initialSpec) setSpec(initialSpec); }, [initialSpec]);
   useEffect(() => {
     if (!visible) return;
@@ -37,7 +39,7 @@ export function Extensions({ visible, initialSpec }: { visible: boolean; initial
     catch (cause) { setError(cause instanceof Error ? cause.message : t('extFailed')); }
     finally { guard.current = false; setBusy(false); }
   }
-  const issueText = (issue: string) => t(['dual-entry', 'host-version', 'node-version', 'host-facet-version'].includes(issue) ? `extIssue-${issue}` : 'extIssue-contract');
+  const issueText = (issue: string) => t(['dual-entry', 'host-version', 'node-version', 'host-facet-version', 'theme-startup', 'theme-contrast', 'theme-interaction'].includes(issue) ? `extIssue-${issue}` : 'extIssue-contract');
   return <section hidden={!visible} className="extension-manager" aria-label={t('extInstalled')}>
     <div className="page-heading"><h1>{t('extInstalled')}</h1><p>{t('extIntro')}</p></div>
     <div className="section-head"><p>{inventory ? t('extEnvironment', { profile: inventory.profile, version: inventory.hostVersion }) : t('extEnvironmentUnknown')}</p><Button disabled={busy || reading} onClick={() => { setError(''); setRevision(value => value + 1); }}>{t(reading ? 'loading' : 'refresh')}</Button></div>
@@ -52,18 +54,20 @@ export function Extensions({ visible, initialSpec }: { visible: boolean; initial
     {inventory && !inventory.complete && <p role="alert">{t('extPartial')}</p>}
     {inventory && !inventory.items.length && <Empty title={t('extEmpty')} />}
     <div className="market-list">{inventory?.items.map(item => <article key={item.name} className="market-row extension-row">
-      <div><h2>{item.name}</h2><p>{item.version} · {t(`extRoute-${item.route}`)} · <span>{t(`extState-${item.state}`)}</span></p></div>
-      <div className="actions"><Button disabled={busy || !item.installed} onClick={() => setSpec(`${item.name}@${item.version}`)}>{t('extChooseVersion')}</Button><Button disabled={busy || !item.removable || item.state === 'restart-required'} onClick={() => void prepare({ action: 'prepare-remove', name: item.name })}>{t('extRemove')}</Button></div>
+      <div><h2>{item.name}</h2><p>{item.version} · {t(`extRoute-${item.route}`)} · <span>{t(`extState-${item.state}`)}</span></p>{item.desired && <p className="fine-print">{t('stdDesired', { state: t('stdState_' + item.desired) })} · {t('stdActual', { state: t('stdState_' + item.actual) })}</p>}</div>
+      <div className="actions"><Button disabled={busy || !item.installed} onClick={() => setSpec(`${item.name}@${item.version}`)}>{t('extChooseVersion')}</Button>{item.toggleable && <Button disabled={busy || item.state === 'restart-required'} onClick={() => void prepare({ action: shouldEnable(item) ? 'prepare-enable' : 'prepare-disable', name: item.name })}>{t(shouldEnable(item) ? 'extEnable' : 'extDisable')}</Button>}<Button disabled={busy || !item.removable || item.state === 'restart-required'} onClick={() => void prepare({ action: 'prepare-remove', name: item.name })}>{t('extRemove')}</Button></div>
     </article>)}</div>
     <p className="fine-print">{t('extStateNote')}</p>
-    {visible && plan && <Dialog title={t(plan.action === 'install' ? 'extReviewInstall' : 'extReviewRemove')} close={() => { if (!busy) { setPlan(null); setError(''); } }}>
+    {visible && <OperationHistory revision={revision} />}
+    {visible && plan && <Dialog title={t(plan.action === 'install' ? 'extReviewInstall' : plan.action === 'remove' ? 'extReviewRemove' : 'extReviewToggle')} close={() => { if (!busy) { setPlan(null); setError(''); } }}>
       <dl className="extension-review"><dt>{t('extPackage')}</dt><dd><code>{plan.name}@{plan.version}</code></dd><dt>{t('extTarget')}</dt><dd>{plan.profile} · DSH {plan.hostVersion}</dd><dt>{t('extRoute')}</dt><dd>{t(`extRoute-${plan.compatibility.route || 'dual'}`)}</dd><dt>{t('extCompatibility')}</dt><dd>{t(`extCheck-${plan.compatibility.state}`)}</dd><dt>{t('license')}</dt><dd>{plan.license || t('notProvided')}</dd></dl>
       {plan.source && <p><a href={plan.source} target="_blank" rel="noopener noreferrer">{t('extArtifact')}</a></p>}
       {!!plan.compatibility.issues.length && <ul>{plan.compatibility.issues.map(issue => <li key={issue}>{issueText(issue)}</li>)}</ul>}
       <p>{t('extPermissions')}</p>{plan.permissions.length ? <ul>{plan.permissions.map((permission, index) => <li key={index}>{permission.name} · {permission.scope}</li>)}</ul> : <p className="fine-print">{t('extNoPermissions')}</p>}
-      <p>{t(plan.action === 'install' ? 'extExecutionNotice' : 'extRemoveNotice')}</p>
+      <p>{t(plan.action === 'install' ? 'extExecutionNotice' : plan.action === 'remove' ? 'extRemoveNotice' : 'extToggleNotice')}</p>
+      {plan.notice && <p className="extension-note">{t(plan.notice)}</p>}
       {error && <p role="alert" className="market-error">{text(error)} {t('extRetryNotice')}</p>}
-      {result ? <div role="status"><p>{t(`extResult-${result.status}`)}</p><p>{t('extOperation')} <code>{result.operationId}</code></p></div> : <Button variant="primary" disabled={!plan.allowed || busy} onClick={() => void execute()}>{t(busy ? 'processing' : plan.action === 'install' ? 'extConfirmInstall' : 'extConfirmRemove')}</Button>}
+      {result ? <div role="status"><p>{t(`extResult-${result.status}`)}</p><p>{t('extOperation')} <code>{result.operationId}</code></p></div> : <Button variant="primary" disabled={!plan.allowed || busy} onClick={() => void execute()}>{t(busy ? 'processing' : plan.action === 'install' ? 'extConfirmInstall' : plan.action === 'remove' ? 'extConfirmRemove' : plan.action === 'enable' ? 'extEnable' : 'extDisable')}</Button>}
     </Dialog>}
   </section>;
 }

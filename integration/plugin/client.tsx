@@ -5,6 +5,8 @@ import type {} from '@deepseek-ai/dsh-client-ui-sidebar/client';
 import type {} from '@deepseek-ai/dsh-client-ui-conversation/client';
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client';
 import type {} from '@deepseek-ai/dsh-api-session-controller/client';
+import type {} from '@deepseek-ai/dsh-commands/remote';
+import type { SessionId } from '@deepseek-ai/dsh-session/types';
 import { type Resource } from '../../community/contracts.mjs';
 import { createMarket, httpPort, type MarketController } from './market/controller';
 import { browserLocalPort } from './market/local.mjs';
@@ -13,8 +15,9 @@ import { Prompt, type Ticket } from './prompt';
 import { validateAppend } from './append.mjs';
 import { MarketLogo } from './market/logo';
 import { translate } from '../../languages/index.mjs';
+import { executeResourceCommand } from './resource-command.mjs';
 
-export const inject = ['slots', 'sessions', 'conversation', 'layout'];
+export const inject = ['slots', 'sessions', 'conversation', 'layout', 'remote', 'remote.commands'];
 /** Plugin-owned state and public DSH contracts compose the full market flow. */
 export function apply(ctx: Context) {
   let model: MarketController;
@@ -27,7 +30,23 @@ export function apply(ctx: Context) {
     model.select(sessionId, resource);
     ctx.layout.selectPanel(null);
   }
-  ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'community-market', inject: () => ({ model, usePrompt }) }, Market)));
+  async function runCommand(resource: Resource, argument: string) {
+    return executeResourceCommand(resource, argument, {
+      current: () => ctx.sessions.list.getSnapshot().current,
+      list: async sessionId => {
+        const result = await ctx.remote.commands.list(sessionId as SessionId);
+        if (!result.ok) throw Error(result.error.message);
+        return [...result.value];
+      },
+      execute: async (sessionId, line) => {
+        const result = await ctx.remote.commands.execute(sessionId as SessionId, line, []);
+        if (!result.ok) throw Error(result.error.message);
+        if (!result.value) throw Error('当前会话未提供此命令，请检查所属插件');
+        return result.value.result;
+      },
+    });
+  }
+  ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: 'community-market', inject: () => ({ model, usePrompt, runCommand }) }, Market)));
   ctx.effect(() => {
     let locale = '';
     let release: (() => void) | undefined;

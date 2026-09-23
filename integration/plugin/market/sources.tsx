@@ -4,6 +4,7 @@ import { Button } from './components';
 import { languageNames } from '../../../languages/index.mjs';
 import { useLanguage } from './i18n';
 import { GitHubSettings } from './github-settings';
+import { WithdrawalHistory } from './management-history';
 
 export function Sources({ state, model }: { state: State; model: MarketController }) {
   const { t, language, text } = useLanguage();
@@ -14,13 +15,14 @@ export function Sources({ state, model }: { state: State; model: MarketControlle
       <select aria-label={t('language')} value={state.local.language} onChange={event => model.setLanguage(event.target.value)}>{Object.entries(languageNames).map(([id, name]) => <option key={id} value={id}>{name}</option>)}</select>
     </label></section>
     <GitHubSettings />
+    <WithdrawalHistory revision={state.sources.map(source => source.checkedAt).join('|')} />
     <h2 className="settings-heading">{t('sources')}</h2>
     <div className="market-list">
       {state.sources.map(source => <section className="source-row" aria-label={source.name} key={source.id}><div className="section-head">
-        <h3>{source.id === 'skills' ? source.name : t(source.id === 'dsh' ? 'sourceDsh' : 'sourceMcp')}</h3><span className="fine-print" role="status">{t(source.syncing ? 'syncing' : source.state)}</span>
+        <h3>{t(`sourceName_${source.id}`)}</h3><span className="fine-print" role="status">{t(source.syncing ? 'syncing' : source.state)}</span>
       </div>
         <p>{t('sourceCount', { count: source.count })} · {t('lastSuccess', { time: time(source.lastSuccess) })}</p>
-        <p className="fine-print">{source.automaticDiscovery ? t('autoNote') : t('fixedSource')}</p>
+        <p className="fine-print">{t(`sourceDescription_${source.id}`)}</p><p className="fine-print">{source.automaticDiscovery ? t('autoNote') : t('fixedSource')}</p>
         {source.automaticDiscovery && <p className="fine-print">{t(source.automatic ? 'autoOn' : 'autoOff')}{source.automatic && !source.syncing && ' · ' + (Date.parse(source.nextCheckAt || '') > Date.now() ? t('nextCheck', { time: time(source.nextCheckAt || '') }) : t('soon'))}</p>}
         {source.error && <p role="alert">{text(source.error)}</p>}
         {source.discovery && <div className="discovery-report"><p>{t('scanResult', { scanned: source.discovery.scanned, count: source.count, excluded: source.discovery.excluded.length })}</p>

@@ -8,6 +8,16 @@ import { createDshProtocolCatalog, createDshManifestCatalog } from '@dsh-std/ada
 
 export const standard = () => ({ $schema: 'https://example.org/dsh-plugin.schema.json', manifestVersion: '0.15', id: 'market.clock', name: 'Clock', version: '1.0.0', facets: { host: { entry: './index.mjs', apiVersion: 'v1alpha1' } }, requires: { contracts: [] }, permissions: [], contributes: { commands: [] }, subscriptions: [] });
 const native = () => ({ name: 'market-clock', version: '1.0.0', license: 'MIT', engines: { dsh: '>=0.1.5-rc.2 <0.1.6' }, dsh: { bundle: { patch: './cordis.patch.yml' } } });
+test('observed theme failures are pinned to the tested package and host versions', () => {
+  const machine = inspectPackage({ ...native(), name: 'dsh-theme-machine', version: '0.1.3' });
+  assert.deepEqual(assessCompatibility(machine, { hostVersion: '0.1.5-rc.2' }), { route: 'native', state: 'incompatible', issues: ['theme-startup'] });
+  machine.version = '0.1.4';
+  assert.equal(assessCompatibility(machine, { hostVersion: '0.1.5-rc.2' }).state, 'declared');
+  const opera = inspectPackage({ ...native(), name: 'dsh-skin-galactic-opera', version: '0.2.1' });
+  assert(assessCompatibility(opera, { hostVersion: '0.1.5-rc.2' }).issues.includes('theme-contrast'));
+  const bloom = inspectPackage({ ...native(), name: '@kubor/dsh-bloom-theme', version: '0.12.0' });
+  assert(assessCompatibility(bloom, { hostVersion: '0.1.5-rc.2' }).issues.includes('theme-interaction'));
+});
 function archive(files) {
   const blocks = [];
   for (const [name, text] of Object.entries(files)) {

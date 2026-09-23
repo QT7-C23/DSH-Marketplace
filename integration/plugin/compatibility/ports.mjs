@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { inspectPackage, packageName } from './packages.mjs';
+import { nativeControl } from './native-control.mjs';
+import { standardControl } from './standard-control.mjs';
 
 export function profilePackages(home, profile) {
   if (!path.isAbsolute(home) || !/^[a-zA-Z0-9_-]+$/.test(profile)) throw Error('尚未确定目标运行环境');
@@ -23,9 +25,12 @@ export function profilePackages(home, profile) {
 }
 
 /** Project only package identities and public lifecycle states, never options/configuration. */
-export function nativeRuntimePort(ctx) {
+export function nativeRuntimePort(ctx, installer) {
   const phases = ['pending', 'loading', 'active', 'failed', 'configured', 'unloading'];
-  return { read: async () => {
+  return { ...(installer ? nativeControl({ inventory: () => ctx.loader.entries(), installer, profileTree: () => {
+    const rows = [...ctx.loader.entries()].filter(entry => entry.options.id === 'community-market');
+    return rows.length === 1 ? rows[0].parent.tree : null;
+  } }) : {}), read: async () => {
     const groups = new Map();
     for (const entry of ctx.loader.entries()) {
       if (entry.options.group || !packageName(entry.options.name)) continue;
@@ -38,9 +43,13 @@ export function nativeRuntimePort(ctx) {
 }
 
 /** Standard facets are read from the adapter, independently of Cordis Loader rows. */
-export function standardRuntimePort(ctx) {
+export function standardRuntimePort(ctx, options = {}) {
   const adapter = () => ctx.get('dshStd');
-  return { adapter, read: async () => {
+  const control = options.installer && options.profileDir ? standardControl({ ...options, adapter, inventory: () => ctx.loader.entries(), profileTree: () => {
+    const rows = [...ctx.loader.entries()].filter(entry => entry.options.id === 'community-market');
+    return rows.length === 1 ? rows[0].parent.tree : null;
+  } }) : {};
+  return { ...control, adapter, read: async () => {
     const current = adapter(); if (!current) return [];
     const snapshot = await current.snapshot();
     const components = new Map();

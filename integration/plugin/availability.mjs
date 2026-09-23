@@ -19,8 +19,9 @@ export class PluginAvailability {
     ];
     const resources = Object.fromEntries(catalog.flatMap(resource => {
       const parent = resource.type === 'Slash' ? catalog.find(item => item.id === resource.parentId) : resource;
-      if (parent?.type !== '插件' || parent.bundle?.kind !== 'npm-package') return [];
-      const moduleName = parent.bundle.name;
+      if (!parent || !['插件', '主题'].includes(parent.type)) return [];
+      const moduleName = parent.packageRef?.name || (parent.bundle?.kind === 'npm-package' ? parent.bundle.name : null);
+      if (!moduleName) return [];
       const locations = rows.filter(({ row }) => row.moduleName === moduleName).map(({ row, scope, name, isDefault }) => ({ scope, name, isDefault, state: stateOf(row) }));
       return [[resource.id, { revision: resource.revision, moduleName, detected: locations.length > 0, locations }]];
     }));

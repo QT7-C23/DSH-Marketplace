@@ -34,6 +34,8 @@ Run the unified gate, review the release payload and notices, push to `QT7-C23/D
 
 ## Progress
 
-- Task 1: in progress.
-- Tasks 2–5: pending, in the user's requested order.
+- Task 1: complete source discovery and scoped reviews. Actual host verified 35,017 merged entries, incremental rendering, search and selected full-definition export.
+- Task 2: actual Slash calls, npm previews, Skill native loading and Microsoft Learn tool use pass. MCP survives four host restarts with enable/disable/removal. Third-party theme tests found one readability warning and one blocked startup failure; a third candidate is under test.
+- Task 3: management and compatibility in progress; Skill lifecycle implementation and configuration-boundary reviews are active.
+- Tasks 4–5: pending community/statistics completion, final verification and publication.
 - The remote repository was verified empty on 2026-09-14; a local `codex/marketplace-completion` branch isolates this project from its parent checkout.

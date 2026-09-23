@@ -15,7 +15,9 @@
 ## Resource changes, if any / 资源变更（如有）/ リソース変更（該当時）
 
 <!-- Type, original author, source URL, version/commit, license evidence, and actual usage checks. 类型、原作者、来源、版本、许可依据与实测。種類・原著作者・出典・バージョン・ライセンス根拠・実測を記載。 -->
-<!-- Prompt: follow catalog/README.md, edit catalog/prompts/<id>.json, and regenerate the index with node catalog/build.mjs. Do not edit generated indexes by hand. Prompt 按投稿格式修改后重建索引，勿手改索引。投稿形式に従い変更後に索引を再生成してください。 -->
+<!-- Follow catalog/README.md: Prompts belong in catalog/prompts/<id>.json; other reviewed types belong in catalog/resource-entries.json. Run node catalog/build.mjs and npm run verify; include generated catalog/index.json and catalog/registry.json, never edit them by hand. Generic UI exports are proposals only. 按目录指南分别修改 Prompt 与其他审核条目，构建并验证后提交生成索引；通用导出仅为提案。Prompt と他の審査済み項目を所定の入力へ保存し、生成・検証して索引を含めてください。汎用出力は提案専用です。 -->
+<!-- Required before public admission: Plugin/Theme exact packageRef matching version; Skill reviewed repository/root, 40-character commit and original files with hash/mode/size/license; MCP complete pinned serverDefinition; Slash known parentId + command; Prompt original body/attribution/provenance. 上架前补齐固定包、Skill 原文件清单、完整 MCP 定义、Slash 父项与命令、Prompt 原文及署名。公開前に固定パッケージ、Skill 全ファイル、完全な MCP 定義、Slash 親とコマンド、Prompt 原文・帰属を確認してください。 -->
+<!-- For a reviewed withdrawal, update sources/removals.json with the real Issue, reason and stable identities; regenerate the index. Preserve personal copies. 移除记录绑定稳定身份并关联真实 Issue 后重建索引，保留个人副本。取り下げは実在 Issue・理由・安定識別子を記録して再生成し、個人コピーは保持します。 -->
 <!-- Follow this project's type-specific review guidance in CONTRIBUTING.md; external listing policies are references only. 按本项目分类审核说明提供材料，外部收录标准不直接适用。種類別の審査案内に従い、外部カタログの条件は参考にとどめてください。 -->
 <!-- State the last verified step (read/download/install/load/use), untested parts, and differences from related resources. 写明验证到哪一步、未测部分和与相关资源的差异。検証段階・未検証部分・関連リソースとの差を記載してください。 -->
 <!-- Compatibility: resource/DSH/protocol/adapter versions and interface; separate author claims from tests. Themes also need their format, parent plugin and restoration steps. 兼容说明区分作者声明与实测，注明资源、DSH、协议、适配器版本和界面；主题补充格式、父插件与恢复。対応版・画面の宣言と実測を区別し、テーマは形式・親プラグイン・復元手順も記載。 -->

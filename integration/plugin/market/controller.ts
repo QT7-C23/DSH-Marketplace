@@ -9,13 +9,24 @@ import { languageNames } from '../../../languages/index.mjs';
 
 export type { Draft };
 export type View = 'discover' | 'detail' | 'saved' | 'publish' | 'sources' | 'updates' | 'installed';
-export type State = { data: Snapshot | null; sources: SourceStatus[]; sourcePending: string; stars: Record<string, RepositoryStar>; starsLoading: boolean; starsError: string; local: LocalData; view: View; detail: Resource | null; editor: Draft; dirty: boolean; loading: boolean; pending: boolean; error: string; notice: string; query: string; filter: string; category: string; sort: string };
+export type State = { data: Snapshot | null; sources: SourceStatus[]; sourcePending: string; stars: Record<string, RepositoryStar>; starsLoading: boolean; starsError: string; local: LocalData; view: View; detail: Resource | null; detailLoading: boolean; editor: Draft; dirty: boolean; loading: boolean; pending: boolean; error: string; notice: string; query: string; filter: string; category: string; sort: string };
 export const blank = (): Draft => ({ type: 'Prompt', title: '', summary: '', version: '1.0.0', body: '', url: '', author: '', resourceId: '', license: '', language: 'zh' });
 export const samples: Resource[] = SEEDS.map(item => ({ ...item, revision: 0, status: 'sample', updatedAt: '' }));
 export const curated: Resource[] = githubPrompts;
+export function sameResource(a: Resource, b: Resource) {
+  const ids = new Set([a.id, ...(a.aliasIds || [])]);
+  return [b.id, ...(b.aliasIds || [])].some(id => ids.has(id));
+}
+export function savedUpdates(saved: Resource[], catalog: Resource[]) {
+  return saved.flatMap(item => {
+    const latest = catalog.find(candidate => sameResource(candidate, item));
+    return latest && (latest.id !== item.id || latest.version !== item.version || latest.revision > item.revision) ? [{ saved: item, latest }] : [];
+  });
+}
 
 export interface CommunityPort {
-  read(): Promise<Snapshot>; readStars(): Promise<Record<string, RepositoryStar>>; readSources(): Promise<SourceStatus[]>;
+  readResource?(id: string, revision: number): Promise<Resource>;
+  read(): Promise<Snapshot>; readStars(ids?: string[]): Promise<Record<string, RepositoryStar>>; readSources(): Promise<SourceStatus[]>;
   syncSource(id: string): Promise<SourceStatus[]>; setSourceAutomatic(id: string, enabled: boolean): Promise<SourceStatus[]>;
   write(command: object): Promise<unknown>;
 }
@@ -31,7 +42,13 @@ export function httpPort(language = () => 'zh-CN'): CommunityPort {
     return value;
   }
   return {
-    read: async () => snapshot(await call()), readStars: async () => starSnapshot(await call(undefined, '/api/community/stars')),
+    readResource: async (id, revision) => {
+      const value = await call(undefined, '/api/community/resource?' + new URLSearchParams({ id, revision: String(revision) }));
+      const [item] = snapshot({ schema: 2, catalog: [value], stats: {} }).catalog;
+      if (item.id !== id || item.revision !== revision) throw Error('该版本不可用，请刷新后重试');
+      return item;
+    },
+    read: async () => snapshot(await call()), readStars: async (ids = []) => starSnapshot(await call(undefined, '/api/community/stars' + (ids.length ? '?ids=' + encodeURIComponent(ids.join(',')) : ''))),
     readSources: async () => sourceSnapshot(await call(undefined, '/api/community/sources/read')),
     syncSource: async sourceId => sourceSnapshot(await call({ sourceId }, '/api/community/sources')),
     setSourceAutomatic: async (sourceId, enabled) => sourceSnapshot(await call({ sourceId, action: 'setAutomatic', enabled }, '/api/community/sources')),
@@ -41,7 +58,7 @@ export function httpPort(language = () => 'zh-CN'): CommunityPort {
 
 /** Local preferences and saved versions are independent from catalog updates. */
 export function createMarket(port: CommunityPort, localPort: LocalPort) {
-  let state: State = { data: null, sources: [], sourcePending: '', stars: {}, starsLoading: false, starsError: '', local: emptyLocal(), view: 'discover', detail: null, editor: blank(), dirty: false, loading: false, pending: false, error: '', notice: '', query: '', filter: '全部', category: 'all', sort: 'recent' };
+  let state: State = { data: null, sources: [], sourcePending: '', stars: {}, starsLoading: false, starsError: '', local: emptyLocal(), view: 'discover', detail: null, detailLoading: false, editor: blank(), dirty: false, loading: false, pending: false, error: '', notice: '', query: '', filter: '全部', category: 'all', sort: 'recent' };
   let localError = '';
   try { state.local = { ...emptyLocal(), ...localPort.read() }; state.editor = state.local.draft || blank(); }
   catch (error) { localError = message(error); state.error = localError; }
@@ -49,6 +66,8 @@ export function createMarket(port: CommunityPort, localPort: LocalPort) {
   const selections = new Map<string, Resource>();
   let retry: { key: string; requestId: string } | null = null;
   let disposed = false, readingSources = false, readGeneration = 0, sourceGeneration = 0;
+  let nextStarIds: string[] | null = null;
+  let detailGeneration = 0;
   const emit = () => { if (!disposed) for (const listener of listeners) listener(); };
   const patch = (value: Partial<State>) => { if (!disposed) { state = { ...state, ...value }; emit(); } };
   async function readSources() {
@@ -60,7 +79,7 @@ export function createMarket(port: CommunityPort, localPort: LocalPort) {
       if (disposed || generation !== sourceGeneration) return;
       const changed = sources.some(row => state.sources.some(old => old.id === row.id && old.lastSuccess !== row.lastSuccess));
       patch({ sources });
-      if (changed) { await refresh(); void refreshStars(); }
+      if (changed) await refresh();
     } catch (error) { if (generation === sourceGeneration) patch({ error: message(error) }); }
     finally { readingSources = false; }
   }
@@ -72,21 +91,38 @@ export function createMarket(port: CommunityPort, localPort: LocalPort) {
       const sources = enabled === undefined ? await port.syncSource(id) : await port.setSourceAutomatic(id, enabled);
       if (disposed) return;
       sourceGeneration++;
-      patch({ sources, notice: enabled === undefined ? sources.find(row => row.id === id)?.state === 'fresh' ? '来源已更新，收藏版本保持原样' : '更新未完成，保留上次目录' : enabled ? '已恢复自动检查' : '已暂停后续自动检查；当前检查会完成' });
-      await refresh(); void refreshStars();
+      patch({ sources, notice: enabled === undefined ? sources.find(row => row.id === id)?.syncing ? '来源检查已开始，可继续浏览' : sources.find(row => row.id === id)?.state === 'fresh' ? '来源已更新，收藏版本保持原样' : '更新未完成，保留上次目录' : enabled ? '已恢复自动检查' : '已暂停后续自动检查；当前检查会完成' });
+      await refresh();
     } catch (error) { patch({ error: message(error) }); }
     finally { patch({ sourcePending: '' }); }
   }
-  async function refreshStars() {
-    if (state.starsLoading || disposed) return;
+  async function refreshStars(ids = (state.data?.catalog || curated).slice(0, 48).map(item => item.id)) {
+    if (disposed) return;
+    if (state.starsLoading) { nextStarIds = ids; return; }
     patch({ starsLoading: true, starsError: '' });
-    try { const stars = await port.readStars(); patch({ stars }); }
+    try { const stars = await port.readStars(ids.slice(0, 60)); patch({ stars: { ...state.stars, ...stars } }); }
     catch (error) { patch({ starsError: message(error), stars: Object.fromEntries(Object.entries(state.stars).map(([repo, value]) => [repo, value.count === null ? value : { ...value, state: 'stale' as const }])) }); }
-    finally { patch({ starsLoading: false }); }
+    finally {
+      patch({ starsLoading: false });
+      if (nextStarIds) { const next = nextStarIds; nextStarIds = null; await refreshStars(next); }
+    }
   }
   function localWrite(value: LocalData, notice: string) {
     try { if (localError) throw Error(localError); localPort.write(value); patch({ local: value, notice, error: '' }); return true; }
     catch (error) { patch({ error: message(error) }); return false; }
+  }
+  async function completeResource(resource: Resource) {
+    if (!port.readResource) throw Error('市场服务暂时不可用，请重试');
+    const full = await port.readResource(resource.id, resource.revision);
+    if (full.id !== resource.id || full.revision !== resource.revision || full.type !== resource.type || full.hasDetails || full.type === 'MCP' && !full.serverDefinition) throw Error('资源详情不完整，原收藏保持不变');
+    return full;
+  }
+  function saveComplete(resource: Resource, update: boolean) {
+    const existing = state.local.saved.find(item => sameResource(item, resource));
+    const saved = existing ? update ? state.local.saved.flatMap(item => item === existing ? [structuredClone(resource)] : sameResource(item, resource) ? [] : [item]) : state.local.saved : [structuredClone(resource), ...state.local.saved];
+    const ratings = { ...state.local.ratings };
+    if (update && existing && ratings[resource.id] === undefined && ratings[existing.id] !== undefined) ratings[resource.id] = ratings[existing.id];
+    return localWrite({ ...state.local, saved, ratings }, update ? '已更新本机版本' : '已收藏到本机');
   }
   async function refresh() {
     const generation = ++readGeneration;
@@ -119,9 +155,16 @@ export function createMarket(port: CommunityPort, localPort: LocalPort) {
       return localWrite({ ...state.local, ratings }, score === null ? '评分已清除' : '评分已保存到本机');
     },
     saveLocal: (resource: Resource, update = false) => {
-      const exists = state.local.saved.some(item => item.id === resource.id);
-      const saved = exists ? state.local.saved.map(item => item.id === resource.id && update ? { ...resource } : item) : [{ ...resource }, ...state.local.saved];
-      return localWrite({ ...state.local, saved }, update ? '已更新本机版本' : '已收藏到本机');
+      if (!resource.hasDetails) return saveComplete(resource, update);
+      const previous = state.local.saved.find(item => sameResource(item, resource));
+      return (async () => {
+        try {
+          const full = await completeResource(resource);
+          if (disposed) return false;
+          if (state.local.saved.find(item => sameResource(item, resource)) !== previous) throw Error('本机收藏已变化，请重新选择更新');
+          return saveComplete(full, update);
+        } catch (error) { patch({ error: message(error) }); return false; }
+      })();
     },
     removeLocal: (id: string) => localWrite({ ...state.local, saved: state.local.saved.filter(item => item.id !== id) }, '已移除本机副本'),
     saveLocalDraft: () => {
@@ -137,8 +180,17 @@ export function createMarket(port: CommunityPort, localPort: LocalPort) {
       await write({ action: 'download', id: resource.id, baseRevision: resource.revision, ...(resource.bundle && !descriptionOnly ? { format: 'package' } : {}) }, '文件已准备好', value => { file = exportFile(value); });
       return file;
     },
-    navigate: (view: View) => patch({ view, detail: null, notice: '', error: '' }),
-    open: (detail: Resource) => patch({ detail, view: 'detail', notice: '', error: '' }),
+    navigate: (view: View) => { detailGeneration++; patch({ view, detail: null, detailLoading: false, notice: '', error: '' }); },
+    open: async (detail: Resource) => {
+      const generation = ++detailGeneration;
+      if (!detail.hasDetails) { patch({ detail, view: 'detail', detailLoading: false, notice: '', error: '' }); return; }
+      patch({ detail, view: 'detail', detailLoading: true, notice: '', error: '' });
+      try {
+        const full = await completeResource(detail);
+        if (generation === detailGeneration) patch({ detail: full });
+      } catch (error) { if (generation === detailGeneration) patch({ error: message(error) }); }
+      finally { if (generation === detailGeneration) patch({ detailLoading: false }); }
+    },
     edit: () => patch({ view: 'publish', error: '', notice: '' }),
     localDraft: () => patch({ view: 'publish', error: '', notice: '' }),
     change: (editor: Draft) => patch({ editor, dirty: true, notice: '' }),

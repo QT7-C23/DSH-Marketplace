@@ -4,6 +4,8 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { chromium } from '../node_modules/playwright/index.mjs';
 import { createHash } from 'node:crypto';
 import sourceCatalog from '../sources/catalog.json' with { type: 'json' };
+import { mergeSourceResources } from '../sources/merge.mjs';
+import { SOURCE_DEFINITIONS } from '../sources/definitions.mjs';
 import path from 'node:path';
 import { lab } from './host.mjs';
 import { setPlugin } from './set-plugin.mjs';
@@ -17,7 +19,7 @@ async function openLab(t) {
   const errors = [];
   page.setDefaultTimeout(10000);
   t.after(async () => {
-    await page.screenshot({ path: `artifacts/dsh-integration/last-${t.name.split(' ')[0]}.png`, fullPage: true }).catch(() => {});
+    await page.screenshot({ path: `artifacts/dsh-integration/last-${createHash('sha256').update(t.name).digest('hex').slice(0, 12)}.png`, fullPage: true }).catch(() => {});
     await browser.close();
     assert.deepEqual(errors, [], 'No unhandled browser errors');
   });
@@ -29,6 +31,13 @@ async function openLab(t) {
   await page.goto(url);
   await page.getByRole('button', { name: '新建会话', exact: true }).first().waitFor();
   return page;
+}
+
+async function openResource(page, title) {
+  const search = page.locator('.community-market .search-field input');
+  await search.fill(title);
+  await page.getByRole('button', { name: '查看 ' + title, exact: true }).click();
+  await page.getByRole('heading', { name: title, exact: true }).waitFor();
 }
 
 async function chooseWorkspace(page) {
@@ -47,6 +56,88 @@ async function chooseWorkspace(page) {
   }
   await page.getByRole('button', { name: '周报使用示例', exact: true }).waitFor();
 }
+
+test('market Skill installation loads original instructions into the real native tool', async t => {
+  const page = await openLab(t);
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await openResource(page, 'brand-guidelines');
+  await page.getByRole('button', { name: '安装到 DSH', exact: true }).click();
+  await page.getByRole('button', { name: '确认安装文件', exact: true }).click();
+  await page.getByRole('dialog', { name: '确认安装 Skill' }).waitFor({ state: 'hidden', timeout: 120000 });
+  const response = await page.request.get(new URL('/api/market-test/skill', page.url()).href, { headers: { origin: new URL(page.url()).origin } });
+  assert.equal(response.status(), 200, await response.text());
+  const probe = await response.json();
+  assert.equal(probe.loaded, true, JSON.stringify(probe));
+  assert.equal(probe.result.isError, false, JSON.stringify(probe.result));
+  assert(probe.content.includes('Anthropic'));
+  assert(probe.result.content.some(block => block.type === 'text' && block.text.includes(probe.content)), 'The actual native tool returns the original Skill body');
+  const file = await readFile(path.join(lab, 'home/skills/brand-guidelines/SKILL.md'), 'utf8');
+  assert(file.includes(probe.content));
+  await page.getByRole('button', { name: '检查宿主加载', exact: true }).last().click();
+  await page.locator('.action-panel .skill-manager').getByText(/默认预设已加载/).waitFor();
+  const instructions = page.locator('.action-panel .skill-manager').getByText(/在新建会话的输入框/);
+  assert((await instructions.boundingBox()).width >= 160, 'Management buttons must not squeeze Skill instructions into a vertical column');
+});
+
+test('management history, withdrawal requests and real npm counts are usable in the host UI', async t => {
+  const page = await openLab(t);
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await openResource(page, '规划模式');
+  const origin = new URL(page.url()).origin;
+  const npm = await (await page.request.get(origin + '/api/community/npm-downloads?ids=source-dsh-plan-mode')).json();
+  const count = npm['@deepseek-ai/dsh-plan-mode'];
+  assert.equal(count.state, 'fresh'); assert(Number.isSafeInteger(count.count));
+  const metric = page.locator('.detail-heading .npm-downloads');
+  const expected = new Intl.NumberFormat('zh-CN', { notation: 'compact', maximumFractionDigits: 1 }).format(count.count);
+  await metric.filter({ hasText: expected }).waitFor();
+  assert((await metric.getAttribute('title')).includes(count.start));
+  const removal = new URL(await page.getByRole('link', { name: '申请移除或修正署名' }).getAttribute('href'));
+  assert.equal(removal.hostname, 'github.com'); assert(removal.searchParams.get('links').includes('source-dsh-plan-mode'));
+  await page.getByRole('button', { name: '我的资源', exact: true }).click();
+  await page.getByRole('button', { name: '已安装扩展', exact: true }).click();
+  const operations = await (await page.request.get(origin + '/api/community/operations')).json();
+  assert.equal(typeof operations.blocked, 'boolean'); assert(operations.recent.length <= 20);
+  await page.getByRole('region', { name: '操作记录', exact: true }).waitFor();
+  assert(!JSON.stringify(operations).includes('privatePath'));
+  await page.locator('.community-market').getByRole('button', { name: '设置', exact: true }).click();
+  const history = page.getByRole('region', { name: '已下架资源', exact: true });
+  await history.waitFor();
+  const records = await (await page.request.get(origin + '/api/community/withdrawals')).json();
+  assert(Array.isArray(records));
+  if (!records.length) await history.getByText('目前没有已确认的下架记录。', { exact: true }).waitFor();
+  for (const [locale, title] of [['en-US', 'Withdrawn resources'], ['ja-JP', '掲載を取り下げたリソース']]) {
+    await page.locator('.setting-line select').selectOption(locale);
+    await page.getByRole('region', { name: title, exact: true }).waitFor();
+  }
+});
+
+test('market MCP connects Microsoft Learn and calls its real search tool before disabling and removing', async t => {
+  const page = await openLab(t);
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await openResource(page, 'Microsoft Learn 文档');
+  await page.getByRole('button', { name: '配置并连接 MCP', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '确认 MCP 连接' });
+  await dialog.waitFor();
+  await dialog.getByRole('button', { name: '确认操作', exact: true }).click();
+  await dialog.waitFor({ state: 'hidden', timeout: 45000 });
+  await page.getByText(/工具已注册；当前连通性需通过实际调用确认/).waitFor({ timeout: 45000 });
+  const response = await page.request.get(new URL('/api/market-test/mcp', page.url()).href, { headers: { origin: new URL(page.url()).origin } });
+  assert.equal(response.status(), 200, await response.text());
+  const result = await response.json();
+  assert.equal(result.isError, false, JSON.stringify(result));
+  assert.match(JSON.stringify(result.content), /learn\.microsoft\.com/);
+  assert.match(JSON.stringify(result.content), /[Bb]lob/);
+  const section = page.locator('.action-panel .mcp-manager');
+  await section.getByRole('button', { name: '停用连接', exact: true }).click();
+  await page.getByRole('dialog', { name: '停用连接' }).getByRole('button', { name: '确认操作', exact: true }).click();
+  await section.getByText(/已停用/).waitFor({ timeout: 30000 });
+  await section.getByRole('button', { name: '移除连接', exact: true }).click();
+  await page.getByRole('dialog', { name: '移除连接' }).getByRole('button', { name: '确认操作', exact: true }).click();
+  await section.getByRole('button', { name: '配置并连接 MCP', exact: true }).waitFor({ timeout: 30000 });
+  const patch = await readFile(path.join(lab, 'home/profiles/web/cordis.patch.yml'), 'utf8');
+  assert(!patch.includes('market-mcp-'), 'Removal clears only the owned durable connection block');
+  assert(patch.includes('community-market'));
+});
 
 test('GitHub settings keep credentials out of reads and browser storage and translate status', async t => {
   const page = await openLab(t);
@@ -167,7 +258,7 @@ async function downloadResource(page, buttonName) {
 }
 
 async function resumeSkillChecks(page) {
-  await page.getByRole('button', { name: '恢复自动检查', exact: true }).click();
+  await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: '恢复自动检查', exact: true }).click();
   await page.getByText('已恢复自动检查', { exact: true }).waitFor();
   const row = page.getByRole('region', { name: 'Anthropic Skills' });
   const status = row.getByRole('status').filter({ hasText: /^(已更新|保留上次目录|读取失败)$/ });
@@ -233,7 +324,7 @@ test('market metrics remain visible across types, count actual GitHub downloads 
     'anthropics/skills': { count: null, checkedAt: '', state: 'unavailable' },
     'modelcontextprotocol/servers': { count: 0, checkedAt: '2026-09-13T00:00:00.000Z', state: 'fresh' },
   };
-  await page.route('**/api/community/stars', route => route.fulfill({ json: fixture }));
+  await page.route('**/api/community/stars*', route => route.fulfill({ json: fixture }));
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   const code = page.getByRole('button', { name: '查看 代码审查助手', exact: true });
   await code.getByText('仓库 Star 1.2万', { exact: true }).waitFor();
@@ -242,7 +333,8 @@ test('market metrics remain visible across types, count actual GitHub downloads 
   for (const type of ['插件', 'Skill', 'MCP', 'Slash', 'Prompt']) {
     await page.getByRole('button', { name: type, exact: true }).click();
     const cards = page.locator('.resource-card');
-    assert.ok(await cards.count() > 0);
+    await cards.first().waitFor();
+    assert.equal(await cards.first().locator('.card-tags span').first().innerText(), type);
     assert.equal(await cards.locator('[aria-label="资源统计"]').count(), await cards.count());
   }
   await page.getByRole('button', { name: '全部', exact: true }).click();
@@ -286,7 +378,7 @@ test('market metrics remain visible across types, count actual GitHub downloads 
 test('archive HTTP failures are reported before the download event deadline', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 内部沟通助手', exact: true }).click();
+  await openResource(page, '内部沟通助手');
   await page.route('**/api/community', route => {
     const request = route.request();
     if (request.method() === 'POST' && request.postDataJSON()?.action === 'download') return route.fulfill({ status: 502, json: { error: 'upstream request timed out' } });
@@ -304,8 +396,8 @@ test('source failures are reported before the updated UI deadline', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   await page.locator('.community-market').getByRole('button', { name: '设置', exact: true }).click();
-  await page.getByRole('button', { name: '暂停自动检查', exact: true }).click();
-  await page.getByRole('button', { name: '恢复自动检查', exact: true }).waitFor();
+  await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: '暂停自动检查', exact: true }).click();
+  await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: '恢复自动检查', exact: true }).waitFor();
   const origin = new URL(page.url()).origin;
   const sources = await (await page.request.get(origin + '/api/community/sources/read')).json();
   const skills = sources.find(row => row.id === 'skills');
@@ -324,7 +416,7 @@ test('source failures are reported before the updated UI deadline', async t => {
 test('documentation failures are reported before the rendered UI deadline', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 规划模式', exact: true }).click();
+  await openResource(page, '规划模式');
   await page.route('**/api/community/documentation?*', route => route.fulfill({ status: 502, json: { error: '来源返回 403，请稍后重试' } }));
   const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/community/documentation');
   const document = openAuthorDocuments(page).then(() => ({}), error => ({ error }));
@@ -336,16 +428,18 @@ test('documentation failures are reported before the rendered UI deadline', asyn
 test('expanded sources deliver Skill archives, plugin packages, MCP definitions and linked Slash entries', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 前端界面设计', exact: true }).waitFor();
+  await page.locator('.community-market .search-field input').fill('内部沟通助手');
+  await page.getByRole('button', { name: '查看 内部沟通助手', exact: true }).waitFor();
   const origin = new URL(page.url()).origin;
   const snapshot = await (await page.request.get(origin + '/api/community/read')).json();
   const sourceResponse = await page.request.get(origin + '/api/community/sources/read');
   assert.equal(sourceResponse.status(), 200, await sourceResponse.text());
-  assert.equal((await sourceResponse.json()).length, 3);
-  assert.equal(snapshot.catalog.filter(item => item.sourceId).length, sourceCatalog.flatMap(row => row.entries).length);
-  assert.equal(snapshot.catalog.filter(item => item.status === 'github').length, 8);
+  assert.deepEqual((await sourceResponse.json()).map(row => row.id).sort(), SOURCE_DEFINITIONS.map(row => row.id).sort());
+  for (const item of mergeSourceResources(sourceCatalog.flatMap(row => row.entries))) assert(snapshot.catalog.some(value => value.id === item.id), item.id);
+  assert.equal(new Set(snapshot.catalog.map(item => item.id)).size, snapshot.catalog.length);
+  assert.equal(snapshot.catalog.filter(item => item.sourceId === 'community' && item.type === 'Prompt').length, 8);
   assert.equal(await page.getByRole('button', { name: '查看 内部沟通助手', exact: true }).count(), 1, 'Live entry replaces its old sample');
-  await page.getByRole('button', { name: '查看 内部沟通助手', exact: true }).click();
+  await openResource(page, '内部沟通助手');
   const zip = await downloadResource(page, '下载完整 Skill ZIP');
   const files = unzipSync(await readFile(await zip.path()));
   assert.ok(files['internal-comms/LICENSE.txt']);
@@ -354,7 +448,7 @@ test('expanded sources deliver Skill archives, plugin packages, MCP definitions 
   await page.getByText('下载 1', { exact: true }).waitFor();
   await page.screenshot({ path: 'artifacts/dsh-integration/source-skill.png', fullPage: true });
   await page.getByRole('button', { name: '发现', exact: true }).click();
-  await page.getByRole('button', { name: '查看 /plan', exact: true }).click();
+  await openResource(page, '/plan');
   await page.getByRole('button', { name: '所属插件：规划模式', exact: true }).click();
   const archive = await downloadResource(page, '下载插件发布包');
   const tar = Buffer.from(gunzipSync(await readFile(await archive.path())));
@@ -368,7 +462,7 @@ test('expanded sources deliver Skill archives, plugin packages, MCP definitions 
   assert.equal(manifest?.name, '@deepseek-ai/dsh-plan-mode');
   assert.equal(manifest.version, '0.1.5-rc.2');
   await page.getByRole('button', { name: '发现', exact: true }).click();
-  await page.getByRole('button', { name: '查看 Microsoft Learn 文档', exact: true }).click();
+  await openResource(page, 'Microsoft Learn 文档');
   const definitionEvent = page.waitForEvent('download');
   await page.getByRole('button', { name: '下载 MCP 服务定义', exact: true }).click();
   const definition = JSON.parse(await readFile(await (await definitionEvent).path(), 'utf8'));
@@ -378,13 +472,51 @@ test('expanded sources deliver Skill archives, plugin packages, MCP definitions 
   await page.getByRole('region', { name: 'DSH 官方插件与命令', exact: true }).waitFor();
   await page.route('**/api/community/sources', async route => route.request().method() === 'POST' ? route.abort('failed') : route.continue());
   await page.getByRole('button', { name: '更新 DSH 官方插件与命令', exact: true }).click();
-  await page.getByRole('alert').filter({ hasText: /连接中断|fetch/ }).waitFor();
+  await page.locator('.market-status[role="alert"]').filter({ hasText: /连接中断|fetch/ }).waitFor();
   await page.unroute('**/api/community/sources');
   await page.getByRole('button', { name: '更新 DSH 官方插件与命令', exact: true }).click();
-  await page.getByText('来源已更新，收藏版本保持原样', { exact: true }).waitFor();
+  await page.getByRole('region', { name: 'DSH 官方插件与命令', exact: true }).getByRole('status').filter({ hasText: /^已更新$/ }).waitFor();
   const updated = await (await page.request.get(origin + '/api/community/read')).json();
   assert.equal(updated.catalog.filter(item => item.sourceId === 'dsh').length, 7);
   await page.screenshot({ path: 'artifacts/dsh-integration/source-settings.png', fullPage: true });
+});
+
+test('a discovered npm theme opens a fixed-version installation review', async t => {
+  const page = await openLab(t);
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  const item = sourceCatalog.flatMap(row => row.entries).find(item => item.packageRef?.name === 'dsh-skin-galactic-opera');
+  await openResource(page, item.title);
+  await page.getByRole('button', { name: '检查安装', exact: true }).click();
+  const field = page.getByRole('textbox', { name: 'npm 包与固定版本', exact: true });
+  assert.equal(await field.inputValue(), item.packageRef.name + '@' + item.packageRef.version);
+  await page.getByRole('button', { name: '检查安装', exact: true }).click();
+  const review = page.getByRole('dialog', { name: '确认安装变更', exact: true });
+  await review.waitFor();
+  await review.getByText(item.packageRef.name + '@' + item.packageRef.version, { exact: true }).waitFor();
+  assert.equal(await review.getByRole('button', { name: '确认安装到此环境', exact: true }).isEnabled(), true);
+});
+
+test('Star ranking discloses partial coverage and can discover a high-Star repository beyond its first page', async t => {
+  const page = await openLab(t);
+  const template = sourceCatalog.flatMap(row => row.entries).find(item => item.type === '主题');
+  const catalog = Array.from({ length: 49 }, (_, i) => ({ ...template, id: 'source-ranking-' + i, title: '排名 ' + i, url: 'https://github.com/ranker/repo-' + i }));
+  await page.route('**/api/community/read', route => route.fulfill({ json: { schema: 2, catalog, stats: {} } }));
+  await page.route('**/api/community/stars*', route => {
+    const ids = new URL(route.request().url()).searchParams.get('ids')?.split(',') || [];
+    assert(ids.length <= 60);
+    const values = catalog.filter(item => ids.includes(item.id)).map(item => [item.url.replace('https://github.com/', ''), { count: item.id === 'source-ranking-48' ? 10000 : 1, state: 'fresh', checkedAt: '2026-09-14T00:00:00Z' }]);
+    return route.fulfill({ json: Object.fromEntries(values) });
+  });
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await page.getByRole('button', { name: '主题', exact: true }).click();
+  await page.locator('.resource-card').nth(47).waitFor();
+  await page.getByRole('combobox', { name: '资源排序' }).selectOption('stars');
+  await page.locator('.star-ranking-note').filter({ hasText: '48/49' }).waitFor();
+  assert.match(await page.locator('.star-ranking-note').innerText(), /未读取/);
+  assert.equal(await page.getByRole('button', { name: '查看 排名 48', exact: true }).count(), 0);
+  await page.getByRole('button', { name: '显示更多', exact: true }).click();
+  await page.waitForFunction(() => document.querySelector('.resource-card')?.getAttribute('aria-label') === '查看 排名 48');
+  await page.locator('.star-ranking-note').filter({ hasText: '49/49' }).waitFor();
 });
 
 test('market follows host theme, scopes its styles, and reflows at narrow widths', async t => {
@@ -456,13 +588,17 @@ test('submissions retain authorship and draft data for every resource type witho
   assert.equal(await page.getByRole('textbox', { name: '密码', exact: true }).count(), 0);
 });
 
-test('theme category has honest empty states and localized submission guidance on narrow screens', async t => {
+test('theme category shows discovered packages, real empty searches and localized submission guidance on narrow screens', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   const market = page.locator('.community-market');
   await page.getByRole('button', { name: '主题', exact: true }).click();
-  await page.getByRole('heading', { name: '主题资源等待收录', exact: true }).waitFor();
-  assert.equal(await market.locator('.resource-card').count(), 0, 'No invented theme listings');
+  await market.locator('.resource-card').first().waitFor();
+  const themes = sourceCatalog.flatMap(row => row.entries).filter(item => item.type === '主题');
+  for (const theme of themes) await page.getByRole('button', { name: '查看 ' + theme.title, exact: true }).waitFor();
+  await market.locator('.search-field input').fill('no-matching-theme-7ca169');
+  assert.equal(await market.locator('.resource-card').count(), 0);
+  await market.locator('.search-field input').fill('');
   await page.getByRole('button', { name: '分享资源', exact: true }).click();
   await page.getByRole('combobox', { name: '资源类型', exact: true }).selectOption('主题');
   await page.getByText(/说明主题插件或配色文件/).waitFor();
@@ -474,7 +610,7 @@ test('theme category has honest empty states and localized submission guidance o
     await page.getByRole('combobox', { name: languageLabel, exact: true }).selectOption(language);
     await market.getByRole('button', { name: discover, exact: true }).click();
     await page.getByRole('button', { name: theme, exact: true }).click();
-    assert.equal(await market.locator('.resource-card').count(), 0);
+    assert.equal(await market.locator('.resource-card').count(), themes.length);
     await page.getByRole('button', { name: share, exact: true }).click();
     await page.getByRole('combobox', { name: typeLabel, exact: true }).selectOption('主题');
     assert.doesNotMatch(await market.innerText(), /typeTheme|themeSubmissionNote/);
@@ -490,13 +626,13 @@ test('settings persist three languages, personal data and automatic discovery pr
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   const market = page.locator('.community-market');
   await market.getByRole('button', { name: '设置', exact: true }).click();
-  await page.getByRole('button', { name: '暂停自动检查', exact: true }).click();
+  await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: '暂停自动检查', exact: true }).click();
   await page.getByText('自动检查已暂停', { exact: false }).waitFor();
   await page.getByRole('combobox', { name: '界面语言', exact: true }).selectOption('en-US');
   await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor();
   await page.reload(); await page.getByRole('button', { name: 'Marketplace', exact: true }).click();
   await market.getByRole('button', { name: 'Settings', exact: true }).click();
-  await page.getByRole('button', { name: 'Resume automatic checks', exact: true }).waitFor();
+  await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: 'Resume automatic checks', exact: true }).waitFor();
   await page.getByRole('combobox', { name: 'Interface language', exact: true }).selectOption('ja-JP');
   await page.getByRole('heading', { name: '設定', exact: true }).waitFor();
   await page.screenshot({ path: 'artifacts/dsh-integration/settings-ja.png', fullPage: true });
@@ -510,7 +646,7 @@ test('settings persist three languages, personal data and automatic discovery pr
   await page.getByRole('combobox', { name: '用途分类', exact: true }).selectOption('design');
   assert.ok(await page.getByRole('button', { name: '查看 algorithmic-art', exact: true }).count());
   assert.equal(await page.getByRole('button', { name: '查看 代码审查助手', exact: true }).count(), 0);
-  await page.getByRole('button', { name: '查看 algorithmic-art', exact: true }).click();
+  await openResource(page, 'algorithmic-art');
   const zip = await downloadResource(page, '下载完整 Skill ZIP');
   const archive = unzipSync(await readFile(await zip.path()));
   assert(archive['algorithmic-art/SKILL.md']); assert(archive['algorithmic-art/LICENSE.txt']);
@@ -531,6 +667,7 @@ test('resource information shows actual host composition without claiming instal
   const resource = inventory.resources['source-dsh-plan-mode'];
   assert.equal(resource.detected, true, 'Pinned DSH actually includes the planning module');
   assert.ok(resource.locations.length > 0);
+  await page.locator('.community-market .search-field input').fill('规划模式');
   const card = page.getByRole('button', { name: '查看 规划模式', exact: true });
   await card.getByText('宿主已有记录', { exact: true }).waitFor();
   assert.equal(await card.getByText('0.1.5-rc.2', { exact: true }).count(), 1);
@@ -564,7 +701,7 @@ test('host state errors stay unknown and retry restores real state', async t => 
   const page = await openLab(t);
   await page.route('**/api/community/availability', route => route.fulfill({ status: 503, json: { error: 'unavailable' } }));
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 规划模式', exact: true }).click();
+  await openResource(page, '规划模式');
   const presence = page.getByRole('region', { name: '宿主状态', exact: true });
   await presence.getByRole('alert').waitFor();
   assert.equal(await presence.getByText('宿主已有记录', { exact: true }).count(), 0);
@@ -590,7 +727,7 @@ test('host state errors stay unknown and retry restores real state', async t => 
 test('author documents render actual pinned README content and retry failures without unsafe HTML', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 规划模式', exact: true }).click();
+  await openResource(page, '规划模式');
   await openAuthorDocuments(page);
   assert.match(await page.locator('.readme-body').innerText(), /plan/i);
   assert.match(await page.locator('.author-documentation .section-head strong').innerText(), /README\.zh\.md/);
@@ -600,7 +737,7 @@ test('author documents render actual pinned README content and retry failures wi
   await page.getByRole('button', { name: 'README.md', exact: true }).click();
   assert.match(await page.getByRole('link', { name: '查看文档原文 ↗', exact: true }).getAttribute('href'), /\/README\.md$/);
   await page.getByRole('button', { name: '发现', exact: true }).click();
-  await page.getByRole('button', { name: '查看 内部沟通助手', exact: true }).click();
+  await openResource(page, '内部沟通助手');
   await page.route('**/api/community/documentation?*', route => route.abort('failed'));
   await page.getByRole('button', { name: '作者文档', exact: true }).click();
   await page.getByRole('alert').filter({ hasText: '文档读取失败' }).waitFor();
@@ -622,7 +759,7 @@ test('document translation is explicit, uses the selected host model and preserv
   const requests = [];
   page.on('request', request => { if (new URL(request.url()).pathname === '/api/community/translation') requests.push(request); });
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 代码审查助手', exact: true }).click();
+  await openResource(page, '代码审查助手');
   await page.getByRole('button', { name: '作者文档', exact: true }).click();
   const original = await page.locator('.readme-body').innerText();
   await page.getByRole('button', { name: '翻译文档', exact: true }).click();
@@ -658,7 +795,7 @@ test('translation cancellation leaves the original and does not leak results int
   const page = await openLab(t);
   const calls = () => readFile(path.join(lab, 'home/translation-test-calls.jsonl'), 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 代码审查助手', exact: true }).click();
+  await openResource(page, '代码审查助手');
   await page.getByRole('button', { name: '作者文档', exact: true }).click();
   const original = await page.locator('.readme-body').innerText();
   await page.getByRole('button', { name: '翻译文档', exact: true }).click();
@@ -679,7 +816,7 @@ test('translation cancellation leaves the original and does not leak results int
   assert.match(await calls(), /"event":"aborted"/);
   assert.equal(await page.locator('.readme-body').innerText(), original);
   await page.getByRole('button', { name: '发现', exact: true }).click();
-  await page.getByRole('button', { name: '查看 提交信息生成器', exact: true }).click();
+  await openResource(page, '提交信息生成器');
   await page.getByRole('button', { name: '作者文档', exact: true }).click();
   await page.locator('.readme-body').waitFor();
   assert.notEqual(await page.locator('.readme-body').innerText(), original);
@@ -689,13 +826,37 @@ test('translation cancellation leaves the original and does not leak results int
 test('Prompt content follows the real host font-size setting', async t => {
   const page = await openLab(t);
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
-  await page.getByRole('button', { name: '查看 把零散记录，整理成周报', exact: true }).click();
+  await openResource(page, '把零散记录，整理成周报');
   const before = await page.locator('.market-detail .content-preview').evaluate(element => parseFloat(getComputedStyle(element).fontSize));
   await page.getByRole('button', { name: '设置', exact: true }).first().click();
   await page.getByRole('button', { name: '增大字号', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   await page.waitForFunction(size => parseFloat(getComputedStyle(document.querySelector('.market-detail .content-preview')).fontSize) === size + 1, before);
+});
+
+test('market Slash action executes the real plan command and preserves the session draft', async t => {
+  const page = await openLab(t);
+  await chooseWorkspace(page);
+  const composer = page.getByRole('textbox', { name: '描述你想要构建的内容, / 调用指令, @ 文件或对话', exact: true });
+  await composer.fill('命令执行前已有的草稿 @report');
+  await page.getByRole('option', { name: 'report.md', exact: true }).click();
+  const before = await composer.innerHTML();
+  await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await openResource(page, '/plan');
+  await page.getByRole('button', { name: '在会话中运行命令', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: '确认会话命令', exact: true });
+  await dialog.getByRole('button', { name: '运行到当前会话', exact: true }).click();
+  await dialog.getByRole('status').filter({ hasText: /Plan mode on|进入规划模式/ }).waitFor();
+  await dialog.getByRole('button', { name: '关闭对话框', exact: true }).click();
+  await page.getByRole('button', { name: '在会话中运行命令', exact: true }).click();
+  await dialog.getByRole('textbox', { name: '命令参数（可选）', exact: true }).fill('off');
+  await dialog.getByRole('button', { name: '运行到当前会话', exact: true }).click();
+  await dialog.getByRole('status').filter({ hasText: /Plan mode off|退出规划模式/ }).waitFor();
+  await dialog.getByRole('button', { name: '关闭对话框', exact: true }).click();
+  await page.getByRole('treeitem', { name: '新会话', exact: true }).click();
+  assert.equal(await composer.innerHTML(), before);
+  assert.equal(await composer.locator('[data-composer-chip="reference"]').count(), 1, 'The reference survives the host panel remount');
 });
 
 test('GitHub contributor prompts keep attribution and work in the real composer', async t => {

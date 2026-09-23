@@ -2,41 +2,55 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja-JP.md)
 
-A community-built marketplace for plugins, Skills, MCP servers, Slash commands, Prompts, and Themes inside DeepSeek Harness.
-
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Status: In development](https://img.shields.io/badge/status-in%20development-orange.svg)](#project-status)
-
-Discover resources, read their original documentation, and keep the versions you choose. The goal remains a complete installation and management workflow inside DSH.
+Discover, use and manage **plugins, Skills, MCP servers, Slash commands, Prompts and Themes inside DeepSeek Harness**. DSH Marketplace is an independent community project with a Chinese, English and Japanese interface. No marketplace account is required.
 
 ![DSH Marketplace](docs/images/marketplace.png)
 
-*Actual development screenshot. The plugin interface supports Chinese, English and Japanese; resource content retains its original language.*
+*Development screenshot; resource documents retain their original language.*
 
 ## Project status
 
-**This is a local development version, independently maintained and not an official DeepSeek product.**
+**`v0.2.0-alpha.1` — early prerelease.** Windows / Node.js 24 / DSH 0.1.5-rc.2 is the tested baseline. Local verification covers the official package, real host UI and resource workflows; standard management also passed five separate host boots, including prepared marketplace removal. See [Releases](https://github.com/QT7-C23/DSH-Marketplace/releases) for archives and [Actions](https://github.com/QT7-C23/DSH-Marketplace/actions) for the actual CI result. No npm publication.
 
-| Area | Available now | Still to build |
-|---|---|---|
-| Browse | Six type filters, use-case filters, search, overview and original README/SKILL.md | Broader catalogs |
-| Extension management | Exact npm previews, version/protocol checks, official CLI install/update/remove, native and standard states | Per-component enable/disable, automatic recovery, broader validation |
-| Sources | Anthropic Skill directory discovery every 6 hours; pause/resume, scan reports and failure recovery | Discovery across more sources and custom sources |
-| Downloads | Verified Skill ZIPs, plugin TGZs, MCP definitions, Prompt text | Skill loading, MCP connections and general Slash execution |
-| Prompt use | Preview and append to a real DSH draft, preserving text, references and attachments | Broader host/version validation |
-| Contribution | Author/license forms for all six types, GitHub submission files; no market accounts | Automatic ingestion of reviewed community contributions |
-| Personal library | Local favorites, drafts and personal ratings; local download counts and repository Stars | Public community-wide metrics |
+The supported test baseline is **Windows, Node.js 24 and DSH 0.1.5-rc.2**. Individual resource outcomes and untested host versions remain explicit.
 
-The catalog contains **30 real resources: 4 plugins, 12 Skills, 3 MCP servers, 3 Slash commands and 8 Prompts**, plus two labeled examples. The Anthropic scan found 19 Skill directories and admitted 12 under the current license and file limits. Other adapters still update selected entries.
+## What you can do
 
-The four plugin entries are official DSH modules, some already composed by the host or its presets; they are not four standalone community bundles. The market now has a standalone development TGZ verified through official CLI installation, real host operation and removal. It is not published to npm or GitHub Releases. See the [package installation guide](docs/PACKAGE_INSTALLATION.md).
+| Resource | Workflow and boundaries |
+|---|---|
+| Plugin | Inspect an exact npm version, check declarations and compatibility, then install/update/remove through the official DSH CLI. Native entries support enable/disable through profile configuration. Protected packages and reverse dependencies constrain changes. |
+| Skill | Inspect and install the original files from a fixed Git commit; load and call them through DSH's native Skill services. Enable, disable, update, remove with retained files, and restore are implemented. Modified or unowned files block replacement. |
+| MCP | Read the complete pinned server definition, choose a supported connection and enter its declared parameters. Configure, enable, disable and remove HTTPS Streamable HTTP or exact-version npm stdio connections. Registered tools indicate registration, not continuing service health. |
+| Slash | Execute a command provided by the current session's parent plugin. Actual `/plan` and `/plan off` calls preserved the composer draft and references. Commands retain their own effects and requirements. |
+| Prompt | Preview and append original text to the current DSH draft, preserving text, references and attachments. Appending does not send the conversation. |
+| Theme | Discover npm theme plugins and use the package-management path to apply or remove them. Three actual packages were tested with different outcomes; there is no universal theme-file importer. |
 
-Themes now have a category and submission flow, but no reviewed entries or automatic discovery/application yet. Native DSH extensions and optional dsh-std components have distinct requirements; the first management layer now reads both runtimes and checks the pinned dsh-std adapter. See [compatibility and themes](docs/COMPATIBILITY_AND_THEMES.md) and the [installation and recovery guide](docs/EXTENSION_MANAGEMENT.md).
+Standard components use the optional **dsh-std adapter** and one marketplace-managed discovery loader. First adoption can reload all standard components and is disclosed before execution. The public SDK cannot prove old-batch cleanup: that process stays **unknown/restart-required**, and further standard toggles are blocked even if the replacement adapter looks active. Fully stop and start DSH. On a subsequent stable boot, toggles save intent for the next boot only; refresh browser clients after restart. There is no module-cache hot swap or automatic recovery. See [extension management](docs/EXTENSION_MANAGEMENT.md).
+
+Theme observations: **Galactic Opera 0.2.1** applies but has a sampled **1.04:1** contrast warning; **Machine 0.1.3** is startup-blocked; **Bloom 0.12.0** supports the default Mist palette and keyboard-opened Cinnabar selection, with a mouse-open bug and repeated local 404 polling. These are bounded results, not general compatibility endorsements. [Compatibility details](docs/COMPATIBILITY_AND_THEMES.md)
+
+## Discovery and updates
+
+Six sources feed one deduplicated catalog:
+
+| Source | Observation on 2026-09-14 |
+|---|---|
+| Official DSH modules and commands | 4 modules and 3 commands, pinned to the host baseline |
+| Anthropic Skills | 19 directories scanned; 12 admitted |
+| OpenAI Skills | 39 directories scanned; 30 admitted |
+| npm community extensions | 4,887 candidates scanned; 4,844 admitted, including 5 themes |
+| Official MCP Registry | 31,784 unique services scanned; 30,116 admitted |
+| Reviewed project GitHub index | Six resource types supported; only reviewed entries merged into `main` are eligible |
+
+A complete runtime scan observed **35,017 merged entries**. These are dated observations under the admission rules, not a catalog-size or usability promise. Counts overlap across sources, and discovery does not certify installation or use. The four official modules may already belong to the host or a preset; they are not four independent community bundles.
+
+The checked source starter snapshot contains **4,907 source records**, before cross-source deduplication. The release-seed policy caps MCP entries at **100**; this is a ceiling, not a claim that the current seed contains 100. Use the final archive report for its actual contents. Runtime MCP pagination reads the full supported directory.
+
+Automatic discovery checks run every **6 hours**, with **30-minute retries** after failure. Settings provides per-source pause/resume, manual synchronization and scan/exclusion reports; the official DSH source stays pinned. A failed or incomplete page rejects that source's whole scan and preserves the last complete cache. Shutdown cancels in-flight reads. Reviewed community changes become discoverable after merge and a successful sync; clients read the reviewed index from the repository default branch.
 
 ## Quick start
 
-For a standalone package, run `npm run package` after installing the development dependencies. The TGZ is written to `artifacts/releases/`; install it with the official CLI as described in the [package guide](docs/PACKAGE_INSTALLATION.md). `npm run verify:package` checks installation, UI, removal and retained data. The source-development workflow remains below.
-
-Requires **Node.js 24+**, npm, pnpm on PATH for installation, network access and Microsoft Edge on Windows. Tested with **DSH 0.1.5-rc.2**; other host versions and platforms remain unverified.
+For source development, use Node.js 24+, npm, pnpm on PATH for package operations, network access, and Microsoft Edge on Windows:
 
 ```powershell
 npm ci
@@ -47,49 +61,59 @@ node integration/set-plugin.mjs on
 node integration/host.mjs web --port 4180 --no-open
 ```
 
-Open the private local authentication URL in `artifacts/dsh-integration/runtime/url.txt`. Choose **继续** (Continue) and **稍后配置** (Configure later), then open **扩展市场** in the sidebar. The plugin’s **设置** page offers English and Japanese. No model key is needed to browse. Stop the host with `Ctrl+C`.
+Open the private authentication URL in `artifacts/dsh-integration/runtime/url.txt`. Choose **继续** (Continue), then **稍后配置** (Configure later), and open **扩展市场** in the sidebar. Change the interface language in **设置**. Browsing needs no model key. Stop the host with `Ctrl+C`.
 
-To use a Prompt, add `artifacts/dsh-integration/runtime/workspace`, create a conversation, select a resource, preview and append it. Sending remains your choice. Detailed setup: [host guide](integration/README.md). The launcher isolates configuration and data; it is not an operating-system sandbox.
+For Prompt or Slash use, add `artifacts/dsh-integration/runtime/workspace` and create a conversation. The launcher separates development configuration and data; it is not an OS sandbox. [Host setup](integration/README.md)
 
-## Data and resource behavior
+To build a standalone TGZ after installing dependencies:
 
-- There is no separate market registration or login. DSH’s host authentication still applies.
-- Favorites, attribution drafts, personal ratings and interface language stay in this browser/site. Clearing site data removes them; a different port has a different storage scope. Old account tables are preserved without being exposed or migrated into public content.
-- Download counts describe files prepared by this local service, with retries deduplicated. **Stars belong to the whole GitHub source repository.** Favorites and ratings are personal, not public community totals.
-- Author documents retain original content, source links and commit information. Missing documentation and network errors are distinct; repository-head documentation is labeled when it may differ from the resource version.
-- READMEs prefer the interface language, then English. Open **Translate document**, select a configured DSH provider, model and target language, then explicitly start translation. This uses your model's token quota; failures and cancellations may also be billed. Originals stay available, translations are labeled, and provider-reported usage is shown. Each request accepts up to 24,000 characters, with no automatic splitting or retries.
-- Queries contact supported GitHub, npm and MCP Registry endpoints. Downloads do not install, enable or execute resources.
-- Keep `artifacts/`, databases, credentials and local authentication URLs out of public commits and reports.
+```powershell
+npm run package
+```
 
-## Development and roadmap
+The intended candidate filename is `dsh-market-integration-0.2.0-alpha.1.tgz` under `artifacts/releases/`; use the actual path and checksum in `package-result.json`. Installation uses the official CLI. Follow the [package guide](docs/PACKAGE_INSTALLATION.md); check [GitHub Releases](https://github.com/QT7-C23/DSH-Marketplace/releases) for future published artifacts.
 
-Run `npm run verify` for static/catalog checks, behavioral tests, types, build and real DSH browser workflows. Translation acceptance uses an isolated test adapter through the host model service, without paid credentials. Live source tests need network access and available GitHub quota. Configure an optional token in **Settings → GitHub connection**: Windows encrypts it locally, and only GitHub API reads use it. See [connection and storage details](docs/GITHUB_CONNECTION.md) and the [UI and host-state verification record](docs/research/2026-09-14-market-information-and-official-installation.md). GitHub Actions is not configured; local verification is not an online CI result.
+## Your data and the numbers you see
 
-Next work covers network reliability, public release preparation, broader community-component and host-version validation, resource-specific use, recovery and additional discovery adapters. Models, local model downloads and Cookbook remain deferred.
-
-| Directory | Responsibility |
+| Indicator | Meaning |
 |---|---|
-| `integration/` | DSH host, React UI, launcher and browser tests |
-| `community/` | Public catalog API, SQLite download counts and contracts |
-| `sources/` / `catalog/` | Discovery, packages, author documents, categories and Prompt contributions |
-| `languages/` | Shared Chinese, English and Japanese interface/error messages |
-| `prototype/` / `server/` | Historical standalone interaction prototype |
-| `tests/` / `scripts/` / `docs/` | Verification and project documentation |
+| GitHub Stars | The entire source repository, with freshness information |
+| npm downloads | The entire package over npm's returned `last-month` date range, with dates and fresh/stale/unavailable state; not marketplace installations or one version's users |
+| Local downloads | Files successfully prepared by this local SQLite-backed service; repeated request IDs are deduplicated, and file saving/installation is not inferred |
+| Favorites and ratings | Personal browser/site data, not public totals or community averages |
 
-[Architecture](docs/ARCHITECTURE.md) · [Sources](sources/README.md) · [Product plan](docs/PRODUCT_PLAN.md)
+Favorites, attribution drafts, ratings and interface language stay in browser storage; clearing site data removes them and another port has another storage scope. Server caches and operation evidence live under `DSH_HOME/community/`. The UI shows the newest 20 sanitized profile-operation records; recovery still requires inspection of local logs, backups and configuration. Old private/account tables remain retained and unexposed.
 
-## Contributing
+Author documents preserve provenance. README selection prefers the current interface language, then English. **Translation starts only when you choose a configured DSH model and explicitly request it; it consumes model tokens and may incur charges even on cancellation or failure.** Originals remain available. Requests are limited to 24,000 characters, with no automatic splitting or retries.
 
-Follow [CONTRIBUTING.md](CONTRIBUTING.md), [Repository Guidelines](AGENTS.md) and the Issue/PR templates. Keep all three READMEs and language files aligned; include behavior changes, verification and screenshots for UI changes.
+An optional [GitHub read token](docs/GITHUB_CONNECTION.md) helps API quota; Windows encrypts it locally. GitHub submission uses GitHub's own identity. Neither browsing nor local favorites requires a marketplace login.
 
-All six types use an attribution form and export a JSON proposal. Submit Prompts through a PR to `catalog/prompts/` using the [format guide](catalog/README.md); attach other resource proposals to the [resource submission Issue](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=03-resource-submission.yml). Include author, source, license, requirements and actual testing. Exporting does not upload or publish; reviewed contributions are not yet synchronized automatically.
+## Contribute or request removal
 
-## License, attribution, and disclaimer
+Use the [contribution guide](CONTRIBUTING.md) and [six-type catalog guide](catalog/README.md). Generic UI exports are **proposals only**. Maintainers complete reviewed type-specific bindings in `catalog/resource-entries.json`; Prompts stay in `catalog/prompts/`. Run `node catalog/build.mjs` and `npm run verify`, then review and merge. Never hand-edit generated indexes. An Issue may omit executable fields for review; it cannot enter the public catalog without the required binding.
 
-Original project code and documentation are licensed under the **[MIT License](LICENSE)**. Copyright © 2026 QT7-C23 and contributors. Preserve the copyright and permission notices when redistributing covered material.
+Authors, maintainers and rights holders can request opt-out through the [removal form](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml), also linked from resource details. Reviewed rules in `sources/removals.json` apply across source aliases and stable identities. The last successful policy survives failures and restarts; personal copies and existing installations are retained. Settings lists known decisions. An infringement allegation is not required.
 
-Third-party content and dependencies retain their own licenses and notices; the root MIT license does not relicense them. See **[Third-party notices](THIRD_PARTY_NOTICES.md)** for DeepSeek Harness, Anthropic Skills, Prompt authors, and principal dependencies. Names, logos, and trademarks belong to their respective owners. No affiliation, sponsorship, endorsement, or trademark license is implied.
+## Development
 
-**The software is provided “AS IS”, without warranty.** Listings, integrity checks, and tests do not guarantee safety, accuracy, compatibility, availability, or suitability. Review third-party content, permissions, and AI output before use. Warranty exclusions and liability limitations are governed by applicable licenses and law; this documentation adds no restriction to MIT permissions. Read the **[English / Chinese / Japanese disclaimer](DISCLAIMER.md)**.
+`npm run verify` is the shared gate for static/catalog checks, behavioral tests, types, builds and host acceptance. `npm run verify:package` exercises official TGZ installation and removal. The [Windows CI workflow](.github/workflows/verify.yml) and [pre-commit hook](.githooks/pre-commit) invoke the same gate; activate the hook with `git config core.hooksPath .githooks`. Configuration is present; local hook activation and online CI results are not yet confirmed.
 
-**Resource removal requests.** If you are the author, maintainer, or rights holder of a resource and would prefer it not to appear in this marketplace, please complete the [removal request form](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml) with its name, URL, and a brief explanation of your relationship to it. We will remove the listing after verification.
+[Architecture](docs/ARCHITECTURE.md) · [Repository guidelines](AGENTS.md) · [Sources](sources/README.md) · [Product plan](docs/PRODUCT_PLAN.md)
+
+The product runs inside DSH. Other host versions, broader third-party combinations and automatic recovery remain outside verified coverage. Local model downloads and Cookbook are deferred.
+
+## License, attribution and disclaimer
+
+Original project code and documentation use the **[MIT License](LICENSE)**, copyright © 2026 QT7-C23 and contributors. Preserve its copyright and permission notices. Third-party resources and dependencies retain their own licenses; the root MIT license does not relicense them. See [Third-party notices](THIRD_PARTY_NOTICES.md).
+
+Names, logos and trademarks belong to their owners. This independently maintained project implies no affiliation, sponsorship, endorsement or trademark license from DeepSeek or any resource author. Software is provided **“AS IS”, without warranty**; listings and tests do not guarantee safety, accuracy, compatibility or availability. Applicable licenses govern warranty and liability. See the [English / Chinese / Japanese disclaimer](DISCLAIMER.md).
+
+## Standard compatibility and removal
+
+The pinned dsh-std adapter 0.1.1-rc.3 has a known upstream limitation: after a component requiring CommandRuntime mounts, a later component can fail activation during connection negotiation. Passing producer-component tests does not certify such combinations; test the actual set before adopting it.
+
+Before removing a marketplace that has managed standard components, stop DSH and run the packaged maintenance preview below. Use your actual absolute DSH_HOME. It restores upstream discovery; previously disabled standard components may load again. If you want them to stay absent, remove those packages through the official CLI first. Review the preview, then repeat the command with `--confirm <fingerprint>`; add `--enable-disabled` only if you accept re-enabling the listed packages. A `not-managed` result needs no confirmation. Only after a successful preparation, run the official removal command. This preserves unrelated settings and records a backup. See the installation guide for details.
+
+```powershell
+node "<DSH_HOME>\profiles\web\node_modules\dsh-market-integration\integration\maintenance.mjs" prepare-uninstall --home "<DSH_HOME>" --profile web
+```

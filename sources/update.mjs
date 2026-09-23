@@ -2,10 +2,12 @@ import { writeFile } from 'node:fs/promises';
 import { adapters } from './adapters.mjs';
 import { sourceDiscovery } from './contracts.mjs';
 import { applyRemovals } from './removals.mjs';
+import { releaseSeed } from './release-seed.mjs';
 
 // Explicit maintainer refresh. Runtime source updates use their own durable cache.
 const rows = await Promise.all(Object.entries(adapters).map(async ([id, read]) => {
-  const result = applyRemovals(sourceDiscovery(await read()));
+  const full = applyRemovals(sourceDiscovery(await read()));
+  const result = releaseSeed(id, full);
   const checkedAt = new Date().toISOString();
   return { id, checkedAt, ...result, entries: result.entries.map(item => ({ ...item, updatedAt: checkedAt })) };
 }));

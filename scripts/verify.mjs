@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdir, readFile, access } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -8,15 +8,10 @@ import { generateTokens } from './tokens.mjs';
 const root = fileURLToPath(new URL('../', import.meta.url));
 process.chdir(root);
 process.env.DSH_MARKET_GITHUB_TOKEN_FILE ||= path.join(root, 'artifacts/private/github-token.dpapi');
-async function filesIn(folder) {
-  const results = [];
-  for (const entry of await readdir(folder, { withFileTypes: true })) {
-    if (['node_modules', 'artifacts', '.git'].includes(entry.name)) continue;
-    const filename = path.join(folder, entry.name);
-    if (entry.isDirectory()) results.push(...await filesIn(filename));
-    else results.push(filename);
-  }
-  return results;
+function repositoryFiles() {
+  const result = spawnSync('git', ['ls-files', '--cached', '--others', '--exclude-standard', '-z'], { cwd: root, encoding: 'utf8', windowsHide: true });
+  if (result.error || result.status !== 0) throw Error('Verification requires the repository checkout and Git');
+  return [...new Set(result.stdout.split('\0').filter(Boolean))].map(file => path.join(root, file));
 }
 function run(args) {
   const result = spawnSync(process.execPath, args, { cwd: root, stdio: 'inherit' });
@@ -24,7 +19,7 @@ function run(args) {
   if (result.status !== 0) process.exit(result.status || 1);
 }
 const contents = new Map();
-for (const filename of await filesIn(root)) {
+for (const filename of repositoryFiles()) {
   if (!/\.(mjs|ts|tsx|css|html|json|md)$/.test(filename)) continue;
   const text = new TextDecoder('utf-8', { fatal: true }).decode(await readFile(filename));
   const relative = path.relative(root, filename);
@@ -78,12 +73,19 @@ assert(!/#[\da-f]{3,8}\b|\b(?:rgb|hsl)a?\(/i.test(marketStyles), 'Host component
 assert(!/prototype\/(?:styles|tokens)/.test(contents.get('integration/plugin/market/components.tsx')), 'Host market must not import the independent prototype theme');
 assert(!/\b(?:window|document|localStorage)\b/.test(contents.get('integration/plugin/market/controller.ts')), 'Market state depends on a storage port, not browser internals');
 run(['catalog/build.mjs', '--check']);
+run(['--test', 'catalog/reviewed.test.mjs', 'sources/global-removals.test.mjs']);
 run(['sources/check.mjs']);
+run(['--test', 'sources/discovery-contracts.test.mjs', 'sources/npm-discovery.test.mjs', 'sources/community-discovery.test.mjs', 'sources/mcp-discovery.test.mjs', 'sources/multi-skill.test.mjs', 'sources/merge.test.mjs', 'sources/release-seed.test.mjs']);
 run(['--test', 'tests/state.test.mjs', 'tests/server.test.mjs', 'tests/browser.test.mjs', 'integration/append.test.mjs', 'community/public-market.test.mjs', 'languages/languages.test.mjs', 'catalog/categories.test.mjs', 'sources/documentation.test.mjs', 'sources/scheduler.test.mjs', 'sources/skill-discovery.test.mjs', 'community/repository-stars.test.mjs', 'integration/controller.test.mjs', 'catalog/catalog.test.mjs', 'sources/sources.test.mjs', 'sources/manager.test.mjs', 'sources/packages.test.mjs', 'sources/http.test.mjs']);
 const hostLock = JSON.parse(contents.get('integration/package-lock.json'));
 run(['--test', 'sources/github-auth.test.mjs']);
+run(['--test', 'community/npm-downloads.test.mjs']);
 run(['--test', 'integration/documentation.test.mjs', 'integration/translation.test.mjs', 'integration/availability.test.mjs']);
-run(['--test', 'integration/compatibility.test.mjs', 'integration/compatibility-ports.test.mjs', 'integration/extension-manager.test.mjs', 'integration/installer.test.mjs', 'integration/extensions-http.test.mjs', 'integration/extension-client.test.mjs']);
+run(['--test', 'integration/resource-command.test.mjs', 'integration/skill-files.test.mjs', 'integration/skill-resources.test.mjs', 'sources/skill-transport.test.mjs']);
+run(['--test', 'integration/mcp-config.test.mjs', 'integration/mcp-manager.test.mjs', 'integration/mcp-profile.test.mjs']);
+run(['--test', 'integration/compatibility.test.mjs', 'integration/compatibility-ports.test.mjs', 'integration/native-control.test.mjs', 'integration/extension-manager.test.mjs', 'integration/installer.test.mjs', 'integration/extensions-http.test.mjs', 'integration/extension-client.test.mjs']);
+run(['--test', 'integration/standard-view.test.mjs', 'integration/standard-loader.test.mjs', 'integration/standard-control.test.mjs', 'integration/standard-manager.test.mjs']);
+run(['--test', 'integration/standard-release.test.mjs']);
 for (const [name, dependency] of Object.entries(hostLock.packages)) {
   if (/(?:^|\/)node_modules\/@deepseek-ai\/dsh(?:-[^/]+)?$/.test(name)) assert.equal(dependency.version, '0.1.5-rc.2', `${name}: unexpected DSH version`);
 }
@@ -94,5 +96,7 @@ run(['integration/build.mjs']);
 run(['--test', 'integration/package.test.mjs']);
 run(['integration/verify-package.mjs']);
 run(['integration/verify-compatibility.mjs']);
+run(['integration/verify-standard.mjs']);
+run(['integration/verify-resources.mjs']);
 run(['integration/verify.mjs']);
 console.log('Verification passed: prototype, adapter, type checks, and real DSH browser experiments. Evidence is in artifacts/.');

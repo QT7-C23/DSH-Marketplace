@@ -79,6 +79,26 @@ await withHost(async call => {
   const standard = await call('/api/market-test/standard');
   assert.deepEqual(standard, { kind: 'success', text: 'Standard command: verified' });
   evidence.push({ phase: 'coexist-and-execute', inventory, standard });
+  const disable = await call('/api/community/extensions', { action: 'prepare-disable', name: 'dsh-market-test-native' });
+  assert.equal(disable.allowed, true, JSON.stringify(disable));
+  assert.equal((await call('/api/community/extensions', { action: 'execute', planId: disable.id, requestId: crypto.randomUUID() })).status, 'restart-required');
+  evidence.push({ phase: 'native-disabled-intent' });
+});
+await withHost(async call => {
+  const inventory = await call('/api/community/extensions');
+  assert.equal(inventory.items.find(row => row.name === 'dsh-market-test-native')?.state, 'disabled', JSON.stringify(inventory));
+  assert.equal((await call('/api/market-test/native')).status, 404);
+  assert.deepEqual(await call('/api/market-test/standard'), { kind: 'success', text: 'Standard command: verified' });
+  const enable = await call('/api/community/extensions', { action: 'prepare-enable', name: 'dsh-market-test-native' });
+  assert.equal(enable.allowed, true, JSON.stringify(enable));
+  assert.equal((await call('/api/community/extensions', { action: 'execute', planId: enable.id, requestId: crypto.randomUUID() })).status, 'restart-required');
+  evidence.push({ phase: 'disabled-after-restart-then-enabled', inventory });
+});
+await withHost(async call => {
+  const inventory = await call('/api/community/extensions');
+  assert.equal(inventory.items.find(row => row.name === 'dsh-market-test-native')?.state, 'active', JSON.stringify(inventory));
+  assert.deepEqual(await call('/api/market-test/native'), { answer: 42, route: 'native' });
+  evidence.push({ phase: 'enabled-after-restart-and-called', inventory });
   const remove = await call('/api/community/extensions', { action: 'prepare-remove', name: 'dsh-market-test-native' });
   assert.equal(remove.allowed, true);
   const result = await call('/api/community/extensions', { action: 'execute', planId: remove.id, requestId: crypto.randomUUID() });

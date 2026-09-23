@@ -8,6 +8,9 @@ body:
         English / 中文 / 日本語. An Issue proposes a resource for review; it does not publish or install it.
         此表用于推荐收录，提交后不会自动上架或安装。实际 Prompt 文件请按 catalog/README.md 通过 PR 提交。
         このフォームは掲載の提案です。自動公開・インストールは行いません。Prompt ファイルは catalog/README.md に従い PR で提出してください。
+        Generic exports are proposals only. Maintainers complete reviewed bindings in catalog/resource-entries.json (Prompts in catalog/prompts/), build and verify the index, then merge to main for client synchronization. Executable fields may be omitted here, but are required before public admission.
+        通用导出仅为提案。维护者在 catalog/resource-entries.json 补齐审核绑定（Prompt 在 catalog/prompts/），构建并验证索引后合并 main 供客户端同步。本表可先缺少可执行字段，公开收录前必须补齐。
+        汎用出力は提案専用です。メンテナーが catalog/resource-entries.json（Prompt は catalog/prompts/）を補完し、索引を生成・検証して main へマージすると同期対象になります。ここでは実行用項目を省略できますが、公開前に必要です。
         Review guidance / 本项目审核说明 / 本プロジェクトの審査案内: [CONTRIBUTING.md](https://github.com/QT7-C23/DSH-Marketplace/blob/main/CONTRIBUTING.md)
         External directories have their own policies; only this project's published guidance applies here. 外部目录规则仅供参考，请按本项目说明投稿。外部カタログの規則ではなく、本プロジェクトの案内に従ってください。
   - type: dropdown
@@ -74,12 +77,12 @@ body:
     id: resource-evidence
     attributes:
       label: Type-specific evidence / 分类补充材料 / 種類別の補足資料
-      description: Use the examples for your resource type; skip irrelevant items. 按类型补充，不适用可省略。該当する種類の情報を補足し、対象外は省略できます。
+      description: Optional proposal evidence; see catalog/README.md for required reviewed bindings. Never include secrets or invent hashes. 提案阶段可选，公开收录绑定见目录指南，不填密钥或编造 hash。提案時は任意です。公開用情報はカタログガイドを参照し、秘密情報や架空のハッシュは記載しないでください。
       placeholder: |
-        Plugin: package/manifest/patch and loading evidence / 发布包、声明与加载情况 / 配布物・宣言・読み込み結果
-        Skill: SKILL.md and referenced files / 正文与引用文件 / 本文と参照ファイル
-        MCP: transport and connection steps / 传输方式与连接步骤 / 転送方式と接続手順
-        Slash: parent plugin, syntax and example / 所属插件、语法与示例 / 親プラグイン・構文・例
-        Prompt: input, variables; model/result if tested / 输入、变量；如已测试附模型和结果 / 入力・変数、検証済みならモデルと結果
-        Theme: plugin or preset, parent, light/dark examples, apply/restore / 插件或配色文件、父插件、深浅示例、应用与恢复 / プラグインか配色ファイル、親、明暗の例、適用・復元
+        Plugin: exact packageRef name/version, manifest/patch and loading evidence / 固定包、声明与加载情况 / 固定パッケージ・宣言・読み込み結果
+        Skill: reviewed GitHub repository/root, 40-character commit, complete original files with hash/mode/size/license / 固定提交与完整原文件清单 / 固定コミットと完全な原ファイル情報
+        MCP: complete pinned serverDefinition, transport and connection steps / 完整固定定义与连接步骤 / 完全な固定定義と接続手順
+        Slash: known parentId + command, syntax and example / 已知父项、命令与示例 / 既知の親 ID・コマンド・例
+        Prompt: original body/attribution/provenance, input and variables; model/result if tested / 原文署名来源、输入变量及实测 / 原文・帰属・出典・入力変数・実測
+        Theme: exact packageRef for installable npm themes; presets may remain proposals; include light/dark and apply/restore evidence / npm 主题固定包，配色文件可先提案；附外观与恢复 / npm テーマ固定版、配色ファイルは提案可。外観と復元を記載
         Optional: screenshot or recording links, redact private data / 可选截图或录屏，去除私人信息 / 任意の画像・録画、非公開情報は除去

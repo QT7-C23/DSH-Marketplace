@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { RESOURCE_TYPES, type Resource } from '../../../community/contracts.mjs';
-import { type MarketController, type View, samples, curated } from './controller';
+import { type MarketController, type View, samples, curated, savedUpdates, sameResource } from './controller';
 import { Surface, Button, Empty, Dialog, ResourceIcon } from './components';
 import { Editor } from './editor';
 import { ResourceStats, Rating, saveFile } from './metrics';
@@ -14,25 +14,30 @@ import { ResourceDocumentation } from './documentation';
 import { HostPresence, ResourceReadiness, useAvailability } from './availability';
 import { ResourceFacts, UsageGuide } from './resource-info';
 import { Extensions } from './extensions';
+import { CommandAction } from './command-action';
+import { SkillActions } from './skill-actions';
+import { McpActions } from './mcp-actions';
 
-export type MarketProps = { model: MarketController; usePrompt: (item: Resource) => void };
+export type MarketProps = { model: MarketController; usePrompt: (item: Resource) => void; runCommand: (item: Resource, argument: string) => Promise<string> };
 const featuredPrompt = curated.find(item => item.id === 'github-code-reviewer');
 export function Market(props: MarketProps) {
   const state = useSyncExternalStore(props.model.subscribe, props.model.getSnapshot);
   return <LanguageContext.Provider value={state.local.language}><MarketPage {...props} /></LanguageContext.Provider>;
 }
-function MarketPage({ model, usePrompt }: MarketProps) {
+function MarketPage({ model, usePrompt, runCommand }: MarketProps) {
   const state = useSyncExternalStore(model.subscribe, model.getSnapshot);
   const { t, language, text } = useLanguage();
   const availability = useAvailability();
   const [remove, setRemove] = useState<Resource | null>(null);
   const [detailTab, setDetailTab] = useState('overview');
   const [installSpec, setInstallSpec] = useState('');
+  const [visibleCount, setVisibleCount] = useState(48);
+  useEffect(() => setVisibleCount(48), [state.view, state.query, state.filter, state.category, state.sort]);
   const mainRef = useRef<HTMLElement>(null);
   useLayoutEffect(() => { mainRef.current?.closest('.community-market')?.scrollTo({ top: 0 }); }, [state.view, state.detail?.id]);
   useEffect(() => setDetailTab('overview'), [state.detail?.id]);
   useEffect(() => {
-    void model.refresh(); void model.refreshStars(); void model.readSources();
+    void model.refresh(); void model.readSources();
     const poll = setInterval(() => void model.readSources(), 5000);
     return () => clearInterval(poll);
   }, [model]);
@@ -43,17 +48,23 @@ function MarketPage({ model, usePrompt }: MarketProps) {
     return () => window.removeEventListener('beforeunload', stop);
   }, [state.dirty]);
   const { data, detail: item } = state;
-  const localItem = item && state.local.saved.find(value => value.id === item.id);
+  const localItem = item && state.local.saved.find(value => sameResource(value, item));
   const activeBundle = item?.bundle && data?.catalog.some(value => value.id === item.id && value.revision === item.revision);
+  const activePackage = item && data?.catalog.some(value => value.id === item.id && value.revision === item.revision) ? item.packageRef || (item.bundle?.kind === 'npm-package' ? item.bundle : null) : null;
   const parent = item?.parentId ? data?.catalog.find(value => value.id === item.parentId) : null;
   const library = ['saved', 'updates', 'installed'].includes(state.view);
   const replacements: Record<string, string> = { 'plan-plugin': 'source-dsh-plan-mode', 'plan-command': 'source-slash-plan', 'internal-comms': 'source-skill-internal-comms' };
-  const visibleSamples = samples.filter(sample => !data?.catalog.some(value => value.id === replacements[sample.id]));
+  const visibleSamples = data ? samples.filter(sample => !data.catalog.some(value => value.id === replacements[sample.id])) : [];
   const listed = state.view === 'saved' ? state.local.saved : [...(data?.catalog || curated), ...visibleSamples];
   const personalStats = Object.fromEntries(listed.map(resource => [resource.id, { downloads: data?.stats[resource.id]?.downloads ?? 0, saves: Number(state.local.saved.some(saved => saved.id === resource.id)), ratingAverage: state.local.ratings[resource.id] ?? null }]));
   const filtered = sortResources(listed.filter(value => (state.filter === '全部' || state.filter === value.type) && (state.category === 'all' || categoryOf(value) === state.category) && `${value.title} ${value.summary} ${value.author}`.toLowerCase().includes(state.query.toLowerCase())), state.sort, personalStats, state.stars);
+  const rankingRepos = [...new Set(filtered.map(item => repositoryOf(item.url)).filter((repo): repo is string => Boolean(repo)))];
+  const rankingKnown = rankingRepos.filter(repo => state.stars[repo]?.count != null).length;
+  const visible = filtered.slice(0, visibleCount);
+  const statsIds = state.view === 'detail' && item ? item.id : ['discover', 'saved'].includes(state.view) ? visible.slice(-48).map(row => row.id).join(',') : '';
+  useEffect(() => { if (statsIds) void model.refreshStars(statsIds.split(',')); }, [model, statsIds]);
   const emptyThemes = state.view === 'discover' && state.filter === '主题' && !state.query && state.category === 'all' && Boolean(data) && !state.loading && !state.error && !listed.some(value => value.type === '主题');
-  const updates = state.local.saved.flatMap(saved => { const latest = data?.catalog.find(value => value.id === saved.id && value.revision > saved.revision); return latest ? [{ saved, latest }] : []; });
+  const updates = savedUpdates(state.local.saved, data?.catalog || []);
   const navigate = (view: View) => view === 'publish' ? model.edit() : model.navigate(view);
   const stats = (resource: Resource) => <ResourceStats item={resource} value={data?.stats[resource.id]} stars={state.stars} loading={state.starsLoading} saved={state.local.saved.some(saved => saved.id === resource.id)} rating={state.local.ratings[resource.id]} />;
   const card = (value: Resource) => <button key={value.id} className="resource-card" onClick={() => model.open(value)} aria-label={t('view', { title: value.title })}>
@@ -68,7 +79,7 @@ function MarketPage({ model, usePrompt }: MarketProps) {
   return <Surface className="community-market">
     <header className="market-header"><div className="section-head"><strong className="market-title"><MarketLogo size={22} />{t('market')}</strong><div className="actions">
       <Button variant="ghost" onClick={() => navigate('publish')}>{t('share')}</Button>
-      <Button aria-label={t('refreshLabel')} variant="ghost" disabled={state.loading || state.pending || Boolean(state.sourcePending)} onClick={() => { void model.refresh(); void model.refreshStars(); void model.readSources(); availability.refresh(); }}>{t('refresh')}</Button>
+      <Button aria-label={t('refreshLabel')} variant="ghost" disabled={state.loading || state.pending || Boolean(state.sourcePending)} onClick={() => { void model.refresh(); if (statsIds) void model.refreshStars(statsIds.split(',')); void model.readSources(); availability.refresh(); }}>{t('refresh')}</Button>
     </div></div>
       <nav className="market-nav" aria-label={t('market')}>
         {([['discover', 'discover'], ['saved', 'library'], ['sources', 'settings']] as [View, string][]).map(([view, label]) => {
@@ -77,8 +88,8 @@ function MarketPage({ model, usePrompt }: MarketProps) {
         })}
       </nav>
     </header>
-    <div className="market-status" role="status">{state.loading ? t('loading') : text(state.notice)}</div>
-    {state.error && <div className="market-status market-error" role="alert">{text(state.error)} <Button onClick={() => void model.refresh()}>{t('retry')}</Button></div>}
+    <div className="market-status" role="status">{state.loading || state.detailLoading ? t('loading') : text(state.notice)}</div>
+    {state.error && <div className="market-status market-error" role="alert">{text(state.error)} <Button onClick={() => void (state.view === 'detail' && item?.hasDetails ? model.open(item) : model.refresh())}>{t('retry')}</Button></div>}
     <main lang={language} ref={mainRef}>
       {library && <nav className="filter-row library-nav" aria-label={t('library')}>
         <Button variant={state.view === 'saved' ? 'selected' : 'ghost'} onClick={() => navigate('saved')}>{t('localSaved')}</Button>
@@ -87,21 +98,24 @@ function MarketPage({ model, usePrompt }: MarketProps) {
         <Button variant="ghost" onClick={() => model.localDraft()}>{t('draftContinue')}</Button>
       </nav>}
       <Extensions visible={state.view === 'installed'} initialSpec={installSpec} />
+      {state.view === 'installed' && <SkillActions catalog={data?.catalog || []} />}
+      {state.view === 'installed' && <McpActions />}
       {['discover', 'saved'].includes(state.view) && <>
         <div className="page-heading"><h1>{t(state.view === 'discover' ? 'discoverTitle' : 'localSaved')}</h1><p>{t(library ? 'libraryNote' : 'discoverSubtitle')}</p></div>
         <div className="section-head catalog-search"><label className="search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 5 5" /></svg><input aria-label={t('search')} value={state.query} placeholder={t('searchHint')} onChange={event => model.search(event.target.value)} /></label>
-          <select aria-label={t('sort')} value={state.sort} onChange={event => model.sort(event.target.value)}>{['recent', 'downloads', 'stars', 'saves', 'rating', 'name'].map(key => <option key={key} value={key}>{t(key)}</option>)}</select>
+          <select aria-label={t('sort')} value={state.sort} onChange={event => model.sort(event.target.value)}>{['recent', 'downloads', 'stars', 'saves', 'rating', 'name'].map(key => <option key={key} value={key}>{t(key === 'stars' ? 'sortStars' : key)}</option>)}</select>
         </div>
+        {state.sort === 'stars' && <p className="star-ranking-note fine-print">{t('starRankingScope', { known: rankingKnown, total: rankingRepos.length })}</p>}
         {state.view === 'discover' && !state.query && state.filter === '全部' && state.category === 'all' && featuredPrompt && <Featured open={() => model.open(featuredPrompt)} />}
         <div className="filter-row type-filters">{['全部', ...RESOURCE_TYPES].map(type => <Button key={type} variant={state.filter === type ? 'selected' : 'ghost'} aria-label={t(type === '全部' ? 'all' : typeKey(type))} aria-pressed={state.filter === type} onClick={() => model.filter(type)}>{t(type === '全部' ? 'all' : typeKey(type))}<span className="filter-count" aria-hidden="true">{type === '全部' ? listed.length : listed.filter(value => value.type === type).length}</span></Button>)}
           <span className="results-note">{t('results', { count: filtered.length })}</span>
         </div>
         {state.filter !== '全部' && <p className="type-description">{t(typeKey(state.filter) + 'Desc')}</p>}
         <div className="category-filter"><label htmlFor="market-category">{t('category')}</label><select id="market-category" value={state.category} onChange={event => model.category(event.target.value)}><option value="all">{t('all')}</option>{CATEGORIES.map(key => <option key={key} value={key}>{t(key)}</option>)}</select></div>
-        {filtered.length ? <div className="resource-grid">{filtered.map(card)}</div> : <Empty title={t(emptyThemes ? 'emptyThemes' : state.query || state.filter !== '全部' || state.category !== 'all' ? 'empty' : 'emptySaved')}>{t(emptyThemes ? 'emptyThemesHelp' : 'emptyHelp')}</Empty>}
+        {filtered.length ? <><div className="resource-grid">{visible.map(card)}</div>{visibleCount < filtered.length && <Button onClick={() => setVisibleCount(count => count + 48)}>{t('loadMore')}</Button>}</> : <Empty title={t(emptyThemes ? 'emptyThemes' : state.query || state.filter !== '全部' || state.category !== 'all' ? 'empty' : 'emptySaved')}>{t(emptyThemes ? 'emptyThemesHelp' : 'emptyHelp')}</Empty>}
         <p className="catalog-note">{t('metricsNote')}</p>
       </>}
-      {state.view === 'detail' && item && <section className="market-detail">
+      {state.view === 'detail' && item && !item.hasDetails && <section className="market-detail">
         <Button variant="ghost" onClick={() => model.navigate('discover')}>{t('back')}</Button>
         <div className="detail-heading"><ResourceIcon type={item.type} /><div><div className="card-tags"><span>{t(typeKey(item.type))}</span><span>{t(categoryOf(item))}</span></div><h1>{item.title}</h1><p>{item.author} · {item.version}</p><p className="detail-summary">{item.summary}</p>{stats(item)}</div></div>
         <div className="detail-layout"><div className="detail-main"><nav className="detail-tabs" aria-label={t('description')}>{['overview', 'authorDocs'].map(tab => <Button key={tab} variant={tab === detailTab ? 'selected' : 'ghost'} aria-pressed={tab === detailTab} onClick={() => setDetailTab(tab)}>{t(tab)}</Button>)}</nav>
@@ -109,15 +123,18 @@ function MarketPage({ model, usePrompt }: MarketProps) {
           <Rating key={item.id} item={item} state={state} model={model} />
         </div><aside className="action-panel"><div className="section-head"><h2>{t('get')}</h2><ResourceReadiness item={item} availability={availability} /></div>
           <p className="fine-print">{t(item.type === 'Prompt' ? 'promptNote' : 'installNote')}</p>
-          {activeBundle && item.bundle?.kind === 'npm-package' && <Button variant="primary full" onClick={() => { if (item.bundle?.kind === 'npm-package') { setInstallSpec(`${item.bundle.name}@${item.bundle.version}`); navigate('installed'); } }}>{t('extPreview')}</Button>}
+          {activePackage && <Button variant="primary full" onClick={() => { setInstallSpec(`${activePackage.name}@${activePackage.version}`); navigate('installed'); }}>{t('extPreview')}</Button>}
           {item.type === 'Prompt' && <Button variant="primary full" onClick={() => { try { usePrompt(item); } catch (error) { model.error(error); } }}>{t('use')}</Button>}
+          {item.type === 'Slash' && parent && <CommandAction key={item.id} item={item} run={runCommand} />}
+          {item.bundle?.kind === 'github-skill' && <SkillActions key={`${item.id}:${item.revision}`} item={item} catalog={data?.catalog || []} canInstall={!!activeBundle} />}
+          {item.type === 'MCP' && item.serverDefinition && item.status !== 'sample' && <McpActions key={`${item.id}:${item.revision}`} item={item} />}
           <Button variant={activeBundle ? 'primary full' : 'full'} disabled={state.pending} onClick={() => void download(item)}>{t(state.pending ? 'processing' : item.type === 'Prompt' ? 'downloadPrompt' : activeBundle ? item.type === 'Skill' ? 'downloadSkill' : 'downloadPlugin' : item.serverDefinition ? 'downloadMCP' : 'downloadInfo')}</Button>
           {activeBundle && <Button variant="ghost full" disabled={state.pending} onClick={() => void download(item, true)}>{t('descriptionOnly')}</Button>}
           {item.bundle?.kind === 'github-skill' && <p className="fine-print">{t('packageNote', { count: item.bundle.files.length })}</p>}
           {parent && <Button variant="full" onClick={() => model.open(parent)}>{t('parent', { title: parent.title })}</Button>}
           {localItem ? <><p className="fine-print">{t('savedVersion', { version: localItem.version })}</p><Button variant="full" onClick={() => setRemove(localItem)}>{t('remove')}</Button></> : <Button variant="full" onClick={() => model.saveLocal(item)}>{t('save')}</Button>}
           {localItem && <Button variant="ghost full" onClick={() => navigate('updates')}>{t('updates')}</Button>}
-          {['插件', 'Slash'].includes(item.type) && item.status !== 'sample' && <HostPresence item={item} availability={availability} />}
+          {['插件', 'Slash', '主题'].includes(item.type) && item.status !== 'sample' && <HostPresence item={item} availability={availability} />}
           <ResourceFacts item={item} />
           {item.registryUrl && <p><a href={item.registryUrl} target="_blank" rel="noopener noreferrer">{t('registry')}</a></p>}
           {repositoryOf(item.url) && <p className="fine-print">{t('starTooltip', { repo: repositoryOf(item.url)! })}</p>}
