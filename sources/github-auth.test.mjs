@@ -9,6 +9,14 @@ import { createGitHubFetch, GitHubConnection } from './github-auth.mjs';
 import { createHandler } from '../community/http.mjs';
 
 const token = 'github_pat_' + 'synthetic_test_only_'.repeat(4);
+const statelessInstallation = 'ghs_12345_' + ['synthetic-header', 'synthetic_payload'.repeat(32), 'synthetic-signature'].join('.');
+test('stateless GitHub installation tokens remain opaque and accept the current longer URL-safe format', () => {
+  assert(statelessInstallation.length > 520);
+  assert.equal(validateGitHubToken(statelessInstallation), statelessInstallation);
+  for (const invalid of [statelessInstallation + '\n', statelessInstallation + ' ', statelessInstallation.replace('.', '/'), 'ghs_' + 'a'.repeat(1021), 'unrecognized_' + statelessInstallation]) {
+    assert.throws(() => validateGitHubToken(invalid), /格式/);
+  }
+});
 test('GitHub CLI OAuth access tokens use the same protected read boundary', () => {
   const oauth = 'gho_' + 'synthetic_test_only_'.repeat(3);
   assert.equal(validateGitHubToken(oauth), oauth);
@@ -55,6 +63,9 @@ test('Windows credentials survive restart encrypted; corrupt storage fails close
     assert.equal(await new GitHubCredentials(file).read(), token);
     await assert.rejects(store.save(token + '\n'), /令牌/);
     assert.equal(await store.read(), token);
+    await store.save(statelessInstallation);
+    assert(!(await readFile(file, 'utf8')).includes(statelessInstallation));
+    assert.equal(await new GitHubCredentials(file).read(), statelessInstallation);
     await writeFile(file, '{"schema":1,"protection":"windows-dpapi","value":"broken"}');
     await assert.rejects(new GitHubCredentials(file).read(), error => !error.message.includes('broken'));
     await store.remove(); assert.equal(await store.read(), null);

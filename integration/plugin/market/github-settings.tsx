@@ -53,7 +53,7 @@ export function GitHubSettings() {
     <p role="status">{status ? t(`githubState_${status.state}`) : t('loading')}</p>
     {status?.limit !== undefined && <p className="fine-print">{t('githubQuota', { remaining: status.remaining!, limit: status.limit, time: new Date(status.resetAt!).toLocaleString(language) })}</p>}
     <form onSubmit={event => { event.preventDefault(); void run('save'); }} autoComplete="off">
-      <Field label={t('githubToken')} type="password" value={token} onChange={event => setToken(event.target.value)} autoComplete="new-password" spellCheck={false} maxLength={256} disabled={busy} />
+      <Field label={t('githubToken')} type="password" value={token} onChange={event => setToken(event.target.value)} autoComplete="new-password" spellCheck={false} maxLength={1024} disabled={busy} />
       <div className="actions"><Button type="submit" disabled={busy || !token.trim()}>{t('githubSave')}</Button>
         <Button disabled={busy} onClick={() => void run('check')}>{t('githubCheck')}</Button>
         <Button disabled={busy || !status?.configured} onClick={() => void run('remove')}>{t('githubRemove')}</Button></div>

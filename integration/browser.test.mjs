@@ -148,7 +148,7 @@ test('GitHub settings keep credentials out of reads and browser storage and tran
   assert(Object.keys(status).every(key => ['configured', 'state', 'limit', 'remaining', 'resetAt', 'checkedAt'].includes(key)));
   let fixture = { configured: false, state: 'anonymous' };
   const commands = [];
-  const synthetic = 'github_pat_' + 'browser_test_only_'.repeat(4);
+  const synthetic = 'ghs_12345_' + ['synthetic-header', 'browser_test_only_'.repeat(32), 'synthetic-signature'].join('.');
   await page.route('**/api/community/github/read', route => route.fulfill({ json: fixture }));
   await page.route('**/api/community/github', route => {
     const command = route.request().postDataJSON(); commands.push(command);
@@ -163,6 +163,7 @@ test('GitHub settings keep credentials out of reads and browser storage and tran
   const input = section.getByLabel('GitHub 个人访问令牌', { exact: true });
   assert.equal(await input.getAttribute('type'), 'password');
   await input.fill(synthetic);
+  assert.equal(await input.inputValue(), synthetic, 'Long installation credentials must not be truncated by the input');
   await section.getByRole('button', { name: '保存并验证', exact: true }).click();
   await section.getByText('GitHub 连接正常。', { exact: true }).waitFor();
   assert.equal(await input.inputValue(), '');
