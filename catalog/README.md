@@ -18,7 +18,7 @@ All submissions use schema 1; lower-case hyphenated IDs, the original author's G
 
 Updates retain the stable resource identity, use a newly reviewed version/commit and rebuild both indexes. Client revisions reflect content changes; existing favorites and installed copies are not silently replaced.
 
-For verified opt-outs, edit `sources/removals.json`, then rebuild and merge. Each rule needs a resource ID, reason and a real project Issue URL. Bind stable identities while the entry is available, or supply explicit identities as shown below. Rules cover all source aliases, preserve the last successful policy after failure/restart and hide dependent Slash entries when their parent is withdrawn. Do not erase user installations or personal copies.
+For verified opt-outs, edit `catalog/removals.json`, then rebuild and merge. Each rule needs a resource ID, reason and a real project Issue URL. Bind stable identities while the entry is available, or supply explicit identities as shown below. Rules cover all source aliases, preserve the last successful policy after failure/restart and hide dependent Slash entries when their parent is withdrawn. Do not erase user installations or personal copies.
 
 ## 简体中文
 
@@ -34,7 +34,7 @@ For verified opt-outs, edit `sources/removals.json`, then rebuild and merge. Eac
 
 通用字段使用 schema 1、小写短横线 ID、原作者 GitHub 名、`zh|en|ja|other` 语言及真实许可 `CC0-1.0|MIT|CC-BY-4.0|Apache-2.0`。这是当前解析限制，不授权修改作品许可；未知或不支持的情况先保留为提案。非 Prompt 的公开 ID 为 `source-community-<id>`，Prompt 为 `github-<id>`。
 
-更新保持资源稳定身份，重新审核版本／提交并重建两个索引；客户端修订反映内容变化，不静默替换已有收藏或安装。退出时修改 `sources/removals.json` 后重建、合并；每条需资源 ID、原因和真实项目 Issue。资源仍在时绑定稳定身份，或按下例明确填写。规则跨来源别名执行，失败／重启保留最后成功策略，父插件退出也隐藏所属 Slash。用户安装与私人副本不删除。
+更新保持资源稳定身份，重新审核版本／提交并重建两个索引；客户端修订反映内容变化，不静默替换已有收藏或安装。退出时修改 `catalog/removals.json` 后重建、合并；每条需资源 ID、原因和真实项目 Issue。资源仍在时绑定稳定身份，或按下例明确填写。规则跨来源别名执行，失败／重启保留最后成功策略，父插件退出也隐藏所属 Slash。用户安装与私人副本不删除。
 
 ## 日本語
 
@@ -50,7 +50,7 @@ For verified opt-outs, edit `sources/removals.json`, then rebuild and merge. Eac
 
 schema 1、小文字とハイフンの ID、原著作者の GitHub 名、言語 `zh|en|ja|other`、実際のライセンス `CC0-1.0|MIT|CC-BY-4.0|Apache-2.0` を使います。これはパーサーの制限で、作品を再許諾する権利ではありません。未対応・不明なものは提案に留めます。公開 ID は Prompt が `github-<id>`、他は `source-community-<id>` です。
 
-更新は安定した識別子を維持して版／コミットを再審査し、両索引を再生成します。個人のコピーや導入物は自動置換しません。取り下げは `sources/removals.json` に ID、理由、実在するプロジェクト Issue を記入し、再生成・マージします。項目が存在する間に安定識別子を結び付けるか、下のように明示します。別名／配布元をまたいで適用し、失敗・再起動後も最後の成功した方針を保持します。親が取り下げられた Slash も非表示になりますが、ユーザーの導入物と個人コピーは残ります。
+更新は安定した識別子を維持して版／コミットを再審査し、両索引を再生成します。個人のコピーや導入物は自動置換しません。取り下げは `catalog/removals.json` に ID、理由、実在するプロジェクト Issue を記入し、再生成・マージします。項目が存在する間に安定識別子を結び付けるか、下のように明示します。別名／配布元をまたいで適用し、失敗・再起動後も最後の成功した方針を保持します。親が取り下げられた Slash も非表示になりますが、ユーザーの導入物と個人コピーは残ります。
 
 ## Binding examples
 

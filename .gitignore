@@ -1,13 +1,8 @@
 node_modules/
 artifacts/
-integration/plugin/client.js
+src/plugin/client.js
 
-# Local planning and research notes are not distribution documentation.
+# Local notes and the former development dependency cache stay private.
+docs/
 .superpowers/
-docs/research/
-docs/PRODUCT_PLAN.md
-docs/FIRST_RELEASE_FLOWS.md
-docs/WEB_CATALOG_PROPOSAL.md
-docs/design/
-docs/LOCAL_DEVELOPMENT.md
-docs/OFFICIAL_PLUGIN_INSTALLATION.md
+/integration/

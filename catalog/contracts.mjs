@@ -1,4 +1,4 @@
-import { publication } from '../community/contracts.mjs';
+import { publication } from '../src/community/contracts.mjs';
 
 export const LICENSES = ['CC0-1.0', 'MIT', 'CC-BY-4.0', 'Apache-2.0'];
 /** Validate files submitted through GitHub before they enter the shipped catalog. */

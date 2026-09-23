@@ -2,7 +2,7 @@ import { readdir, readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { validatePrompt, submissionUrl } from './contracts.mjs';
-import { registryEntries } from '../sources/community.mjs';
+import { registryEntries } from '../src/sources/community.mjs';
 
 const folder = new URL('./prompts/', import.meta.url);
 const entries = [];
@@ -20,7 +20,7 @@ else await writeFile(destination, output);
 console.log(`GitHub prompt catalog: ${entries.length} files validated.`);
 const additional = JSON.parse(await readFile(new URL('./resource-entries.json', import.meta.url), 'utf8'));
 assert(Array.isArray(additional), 'Additional resource entries must be an array');
-const removals = JSON.parse(await readFile(new URL('../sources/removals.json', import.meta.url), 'utf8')).entries;
+const removals = JSON.parse(await readFile(new URL('./removals.json', import.meta.url), 'utf8')).entries;
 const registry = { schema: 1, entries: [...entries, ...additional], removals };
 registryEntries(registry);
 const registryOutput = JSON.stringify(registry, null, 2) + '\n';

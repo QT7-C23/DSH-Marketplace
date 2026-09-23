@@ -1,12 +1,12 @@
 # DSH Marketplace
 
-[English](README.md) · [简体中文](docs/i18n/README.zh-CN.md) · [日本語](docs/i18n/README.ja-JP.md)
+[English](README.md) · [简体中文](README.zh-CN.md) · [日本語](README.ja-JP.md)
 
 Discover, use and manage **plugins, Skills, MCP servers, Slash commands, Prompts and themes inside DeepSeek Harness**. An independent community project with an English, Chinese and Japanese interface. No marketplace account required.
 
-[Download](https://github.com/QT7-C23/DSH-Marketplace/releases) · [Documentation](docs/README.md) · [Contribute](CONTRIBUTING.md)
+[Download](https://github.com/QT7-C23/DSH-Marketplace/releases) · [Documentation](scripts/release/README.md) · [Contribute](CONTRIBUTING.md)
 
-![DSH Marketplace](docs/images/marketplace.png)
+![DSH Marketplace](assets/marketplace.png)
 
 *Development screenshot; resource documents retain their original language.*
 
@@ -21,7 +21,7 @@ Discover, use and manage **plugins, Skills, MCP servers, Slash commands, Prompts
 | Prompts | Preview and append to your draft, preserving text, references and attachments; never auto-send. |
 | Themes | Discover and manage npm theme packages, with resource-specific compatibility information. |
 
-Sources include the pinned DSH catalog, Anthropic Skills, OpenAI Skills, npm, MCP Registry and this project's reviewed GitHub catalog. Automatic discovery checks every six hours; incomplete refreshes preserve the previous catalog. Discovery does not guarantee that every resource can run. [Source details](sources/README.md)
+Sources include the pinned DSH catalog, Anthropic Skills, OpenAI Skills, npm, MCP Registry and this project's reviewed GitHub catalog. Automatic discovery checks every six hours; incomplete refreshes preserve the previous catalog. Discovery does not guarantee that every resource can run. [Source details](src/sources/README.md)
 
 Read original author documentation in the available language of your choice. Optional translation uses a model you select in DSH and consumes its tokens, including possible charges on failure or cancellation.
 
@@ -36,13 +36,13 @@ dsh plugin --profile web add "C:\Downloads\dsh-market-integration-0.2.0-alpha.1.
 dsh web
 ```
 
-Open **扩展市场** in the sidebar and choose your language in Settings. Browsing needs no model key. See the [installation guide](docs/PACKAGE_INSTALLATION.md) for updates and removal, or [development setup](integration/README.md) to run from source. The marketplace is not published to npm.
+Open **扩展市场** in the sidebar and choose your language in Settings. Browsing needs no model key. See the [installation guide](scripts/release/README.md) for updates and removal, or [development setup](scripts/README.md) to run from source. The marketplace is not published to npm.
 
 ## Before you use it
 
-- **Compatibility:** native DSH resources and supported dsh-std components are handled separately. Standard component changes require a full restart; the pinned adapter has a known CommandRuntime combination issue. [Compatibility and themes](docs/COMPATIBILITY_AND_THEMES.md)
-- **Management:** MCP version/configuration changes require removal and reconnection. Before uninstalling a marketplace that has managed standard components, follow the [removal preparation](docs/PACKAGE_INSTALLATION.md#标准组件卸载准备).
-- **GitHub connection:** an optional read token helps API quota. Windows credential initialization can take about a minute on first use. [Connection guide](docs/GITHUB_CONNECTION.md)
+- **Compatibility:** native DSH resources and supported dsh-std components are handled separately. Standard component changes require a full restart; the pinned adapter has a known CommandRuntime combination issue. [Compatibility and themes](scripts/release/README.md#resource-workflows)
+- **Management:** MCP version/configuration changes require removal and reconnection. Before uninstalling a marketplace that has managed standard components, follow the [removal preparation](scripts/release/README.md#standard-compatibility-and-removal).
+- **GitHub connection:** an optional read token helps API quota. Windows credential initialization can take about a minute on first use. [Connection guide](scripts/README.md#github-连接)
 - **Statistics and data:** Stars belong to the source repository, npm downloads to the package, and local download counts to prepared files. Favorites and ratings are personal browser data; clearing site data removes them.
 
 This is an early prerelease. Other host versions and all third-party combinations are not certified; automatic recovery and local model downloads are outside the current scope.
@@ -51,7 +51,7 @@ This is an early prerelease. Other host versions and all third-party combination
 
 Use the [contribution guide](CONTRIBUTING.md) to report bugs or propose resources through GitHub review. Authors and rights holders can request opt-out through the [removal form](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml), without alleging infringement. Existing private copies and installations are retained.
 
-Developers: [setup and verification](integration/README.md) · [architecture](docs/ARCHITECTURE.md) · [repository guidelines](AGENTS.md) · [CI](https://github.com/QT7-C23/DSH-Marketplace/actions). The shared verification command is `npm run verify`.
+Developers: [setup and verification](scripts/README.md) · [architecture](scripts/README.md#模块与本地数据) · [repository guidelines](AGENTS.md) · [CI](https://github.com/QT7-C23/DSH-Marketplace/actions). The shared verification command is `npm run verify`.
 
 ## License
 

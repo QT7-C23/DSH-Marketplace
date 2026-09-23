@@ -2,29 +2,31 @@
 
 ## Structure and boundaries
 
-This is the independent DSH Marketplace repository at `D:\Project\DSH`. `integration/` owns the pinned DSH host, React UI, native resource adapters, package builder and host acceptance. `community/` owns HTTP contracts, local SQLite counts and external metrics. `sources/` owns discovery, caches, identities, removals and verified downloads. `catalog/prompts/` and `catalog/resource-entries.json` are reviewed catalog inputs. `languages/` contains shared Chinese, English and Japanese messages. `prototype/` and `server/` retain the historical standalone prototype.
+`src/plugin/` contains the DSH entrypoint, React market and resource adapters. `src/community/` owns HTTP contracts and metrics; `src/sources/` owns discovery, identities and downloads; `src/languages/` contains Chinese, English and Japanese messages. `src/prototype/` and `src/server/` retain the historical prototype and shared helpers.
 
-Use `docs/README.md` as the public documentation index, `docs/i18n/` for overview translations and `integration/README.md` for development setup. Keep each procedure in one guide and link to it. Planning drafts and dated investigations stay local in ignored paths, including `docs/research/` and `.superpowers/`. Keep credentials, databases and runtime evidence in ignored `artifacts/`; public illustrations belong in `docs/images/`.
+`catalog/` holds reviewed resources, Prompt originals, removal policies and the startup source snapshot. `tests/` groups behavioral suites, fixtures and helpers. `scripts/host/` owns the pinned host, builder and acceptance runners; `scripts/release/` contains packaged installation READMEs. Public images belong in `assets/`; third-party licenses in `licenses/`.
+
+Keep root READMEs focused on usage. Development setup belongs in `scripts/README.md`. `docs/`, `.superpowers/` and `artifacts/` are local-only: do not publish planning records, credentials, databases or runtime evidence. Preserve upstream attribution and original license bytes.
 
 ## Development and verification
 
-Use Node.js 24+ and run from the repository root:
+Use Node.js 24+ from the repository root:
 
-- `npm ci` and `npm ci --prefix integration --ignore-scripts`: install locked dependencies.
-- `npm run verify`: the single gate for static/catalog checks, behavioral tests, types, build and host acceptance.
-- `npm run package`: build the standalone TGZ under `artifacts/releases/`.
-- `npm run verify:package`: check official installation, real UI, removal and retained data.
-- `npm start`, `npm test`, `npm run test:browser`: historical prototype server and tests.
+- `npm ci --ignore-scripts`: install the single locked dependency set.
+- `npm run verify`: the common gate for repository layout, public links, static/catalog checks, behavioral tests, types, build and host acceptance.
+- `npm run package`: build a standalone TGZ under `artifacts/releases/`.
+- `npm run verify:package`: verify official installation, real UI, removal and retained data.
+- `npm start`, `npm test`, `npm run test:browser`: run the historical prototype or focused tests.
 - `npm run tokens`: regenerate prototype CSS after token changes.
 
-Host setup is in `integration/README.md`. Windows acceptance uses Microsoft Edge and pnpm; live sources require network access. CI in `.github/workflows/verify.yml` uses Windows 2025, Node 24.16.0 and pnpm 12.3.4. The workflow and `.githooks/pre-commit` run the identical gate. Activate the local hook with `git config core.hooksPath .githooks`; configuration alone does not prove CI success or hook activation.
+Actual host acceptance uses Windows, Microsoft Edge and pnpm. Live sources need network access. `.github/workflows/verify.yml` and `.github/hooks/pre-commit` run the identical gate; activate the local hook with `git config core.hooksPath .github/hooks`. Check actual results before claiming success.
 
-## Style and tests
+## Style and testing
 
-Use UTF-8, two spaces, ES modules and camelCase: `.mjs` JavaScript, `.ts` contracts/controllers, `.tsx` React. Keep UI, HTTP, persistence and host ports separate. No formatter is configured. Never edit generated CSS, `integration/plugin/client.js` or catalog indexes directly.
+Use UTF-8, two spaces, ES modules and camelCase: `.mjs`, `.ts` contracts/controllers and `.tsx` React. Keep UI, HTTP, persistence and host ports separate. No formatter is configured. Do not hand-edit generated CSS, `src/plugin/client.js` or catalog indexes.
 
-Use Node's test runner, `node:assert/strict`, `*.test.mjs` and Playwright. Add failing regressions before fixes; check real behavior, source integrity, ownership, interrupted operations and preserved drafts. Never log credentials. Distinguish discovered, installed, loaded and successfully used states.
+Use Node's test runner, `node:assert/strict`, `*.test.mjs` under `tests/`, and Playwright. Start fixes with failing regressions. Test real behavior, ownership, interrupted operations, preserved drafts and file integrity. Never log credentials. Distinguish discovered, installed, loaded and successfully used states.
 
 ## Contributions
 
-Follow `CONTRIBUTING.md` and `.github/` templates. Use the convention `type: short description` (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`). Preserve unrelated work; stage explicit files only when authorized. Report verification and limits, include UI evidence, preserve attribution, and align affected README translations. Review typed resource bindings before rebuilding indexes.
+Follow `CONTRIBUTING.md` and `.github/` templates. Use `type: short description` (`feat`, `fix`, `docs`, `test`, `refactor`, `chore`). Preserve unrelated work and stage explicit files only. Report verification and limits, include UI evidence where relevant, align affected README translations, and review typed resource bindings before regenerating indexes.
