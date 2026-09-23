@@ -27,7 +27,11 @@ jobs:
           package-manager-cache: false
       - run: npm ci
       - run: npm ci --prefix integration --ignore-scripts
-      - run: npm install --global pnpm@12.3.4 --ignore-scripts --registry=https://registry.npmjs.org
+      - name: Install pinned pnpm
+        run: |
+          npm install --global pnpm@12.3.4 --registry=https://registry.npmjs.org
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((pnpm --version).Trim() -ne '12.3.4') { throw 'Unexpected pnpm version' }
       - name: Prepare encrypted public GitHub read credential
         env:
           DSH_CI_READ_TOKEN: ${{ github.token }}
