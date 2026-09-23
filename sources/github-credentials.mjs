@@ -11,18 +11,25 @@ export function validateGitHubToken(token) {
   if (typeof token !== 'string' || !/^(?:(?:github_pat_|ghp_|gho_)[A-Za-z0-9_]{30,245}|ghs_[A-Za-z0-9_.-]{30,1020})$/.test(token)) throw new CommunityError(400, 'GitHub 令牌格式不正确');
   return token;
 }
-function crypt(mode, input) {
+async function crypt(mode, input) {
   if (process.platform !== 'win32') throw new CommunityError(503, '当前仅支持 Windows 账户加密保存 GitHub 令牌');
   const executable = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
   const script = fileURLToPath(new URL('../scripts/github-secret.ps1', import.meta.url));
-  return new Promise((resolve, reject) => {
-    const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 30000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout) => {
-      if (error) reject(new CommunityError(503, '无法读取或保存 GitHub 令牌，请重新配置'));
-      else resolve(stdout);
-    });
-    child.stdin.on('error', () => {});
-    child.stdin.end(input);
-  });
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await new Promise((resolve, reject) => {
+        const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 30000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout) => {
+          if (error) reject(error);
+          else resolve(stdout);
+        });
+        child.stdin.on('error', () => {});
+        child.stdin.end(input);
+      });
+    } catch (error) {
+      if (attempt === 0 && error.killed && error.signal === 'SIGTERM') continue;
+      throw new CommunityError(503, '无法读取或保存 GitHub 令牌，请重新配置');
+    }
+  }
 }
 
 /** The file contains DPAPI ciphertext. Only this backend port returns plaintext. */

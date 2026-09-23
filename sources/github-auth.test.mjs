@@ -94,6 +94,38 @@ test('Windows credential protection tolerates a cold helper startup and remains 
   }
 });
 
+test('Windows credential helpers retry one killed process, preserve saved data and do not retry corruption', { skip: process.platform !== 'win32' }, async t => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'dsh-github-retry-'));
+  const file = path.join(folder, 'github.dpapi');
+  const original = childProcess.execFile;
+  let failures = 1, calls = 0;
+  const intercepted = t.mock.method(childProcess, 'execFile', (executable, args, options, callback) => {
+    calls++;
+    return original(executable, args, { ...options, timeout: failures-- > 0 ? 1 : options.timeout }, callback);
+  });
+  syncBuiltinESMExports();
+  try {
+    await new GitHubCredentials(file).save(token);
+    assert.equal(calls, 2, 'A killed protection process gets one fresh attempt');
+    const encrypted = await readFile(file, 'utf8');
+    assert(!encrypted.includes(token));
+    calls = 0; failures = 1;
+    assert.equal(await new GitHubCredentials(file).read(), token);
+    assert.equal(calls, 2, 'A killed decryption process also gets one fresh attempt');
+    calls = 0; failures = Infinity;
+    await assert.rejects(new GitHubCredentials(file).save(token + 'x'), error => error.status === 503 && !error.message.includes(token));
+    assert.equal(calls, 2, 'Persistent failure stays bounded');
+    assert.equal(await readFile(file, 'utf8'), encrypted, 'A failed replacement preserves the original ciphertext');
+    calls = 0; failures = 0;
+    await writeFile(file, '{"schema":1,"protection":"windows-dpapi","value":"broken"}');
+    await assert.rejects(new GitHubCredentials(file).read(), error => error.status === 503 && !error.message.includes('broken'));
+    assert.equal(calls, 1, 'Corrupt input is not a transient process failure');
+  } finally {
+    intercepted.mock.restore(); syncBuiltinESMExports();
+    await rm(folder, { recursive: true, force: true });
+  }
+});
+
 test('save validates first; public status excludes token; rejected replacement preserves credential', async () => {
   const store = memoryStore(); let fail = false; let changed = 0;
   const connection = new GitHubConnection({ store, onChange: () => { changed++; }, request: async (_url, options) => {
