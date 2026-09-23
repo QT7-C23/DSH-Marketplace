@@ -1,6 +1,6 @@
 # GitHub connection
 
-Updated 2026-09-14. The marketplace has **no separate account or login**. DSH host authentication still applies. GitHub credentials are optional for public source reads; contributing an Issue or PR uses GitHub itself, and saving a read token does not publish anything.
+The marketplace has **no separate account or login**. DSH host authentication still applies. GitHub credentials are optional for public source reads; contributing an Issue or PR uses GitHub itself, and saving a read token does not publish anything.
 
 ## Configure locally
 
@@ -9,6 +9,8 @@ Open **Marketplace → Settings → GitHub connection**, enter a token with only
 Saving first validates through GitHub's `/rate_limit` endpoint. A failed replacement preserves the previous credential. **Check connection** refreshes the displayed core quota and reset time; search has its own limits. **Remove token** deletes this local copy and resumes anonymous reads. Revoke it separately in GitHub if required. The settings API returns status and quota, never the token.
 
 After a quota-related failure, manually synchronize the affected source or wait for its retry. Discovery sources normally check every six hours and retry after thirty minutes; pausing automatic checks does not erase their cache. A source's incomplete scan is not accepted as a replacement.
+
+Windows credential initialization can take about a minute on first use. The helper retries a timed-out attempt once; this startup delay remains a known limitation. A completed connection check, rather than a stored file alone, confirms that the credential can be read.
 
 ## Storage and request scope
 
@@ -24,12 +26,12 @@ The community source resolves this repository's `main` commit, reads and validat
 
 Verified removal policies arrive through the same index and apply globally to stable identities and aliases. The last successful policy survives network failure and restart; removing a local token does not clear it. Settings shows known removal decisions, and resource details link the [author opt-out form](https://github.com/QT7-C23/DSH-Marketplace/issues/new?template=04-resource-removal.yml). Existing personal copies and installations are retained.
 
-As of 2026-09-14, the candidate is unpublished and the first public remote index synchronization is still pending. The implemented reader is not proof of a successful public merge-to-client delivery.
+A successful synchronization is required before a merged entry appears in the client. Check the source status and last successful scan in Settings.
 
 ## Verification and CI
 
 `npm run verify` covers exact-domain routing, DPAPI persistence/restart reads, rejected replacements, safe response fields and same-origin writes. Real-host settings tests use synthetic credentials with intercepted validation responses; they do not replace the user's stored token. Live source tests may use the locally configured read credential and require actual network quota.
 
-The [Windows CI workflow](../.github/workflows/verify.yml) uses the job's ephemeral `github.token` with `contents: read`, encrypts it into the ignored test path with DPAPI, and runs the same `npm run verify` gate. It is not a personal publishing credential and is not included in packages. CI is configured but has not run online at this documentation checkpoint.
+The [Windows CI workflow](../.github/workflows/verify.yml) uses the job's ephemeral `github.token` with `contents: read`, encrypts it into the ignored test path with DPAPI, and runs the same `npm run verify` gate. It is not a personal publishing credential and is not included in packages. Current results are available in [Actions](https://github.com/QT7-C23/DSH-Marketplace/actions); check the run for the commit you are evaluating.
 
 An actual successful token check establishes live authentication at that time; a synthetic UI test, encrypted file or workflow definition alone does not. Translation uses the separately selected DSH model and may consume paid tokens; GitHub configuration does not grant model access.

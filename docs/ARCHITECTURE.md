@@ -1,6 +1,6 @@
 # DSH 市场架构
 
-更新：2026-09-24。版本 `v0.2.0-alpha.1`。官方安装包及真实宿主验收已有本地记录，标准组件完成五次独立启动测试，包括准备后卸载市场；完整发布结果见仓库交付记录及 GitHub Actions。
+适用于 `v0.2.0-alpha.1`。安装入口见[安装指南](PACKAGE_INSTALLATION.md)，其他文档见[文档目录](README.md)。
 
 ## 运行与模块边界
 
@@ -33,7 +33,7 @@ DSH public slots / session services
 
 `merge.mjs` 按 npm 包名、MCP 服务名、Skill 仓库＋根、父项＋Slash 命令和 Prompt 稳定 ID 去重，保留别名；优先级保留官方与审核固定信息。修订基于内容指纹，单纯上游提交移动不替换未改动内容，用户选定副本不会自动升级。
 
-2026-09-14 完整运行时观测为 35,017 条合并资源，具体来源数字见 [README](../README.zh-CN.md#发现与更新)。`release-seed.mjs` 将发行用 MCP 起始快照限制为最多 100 条，并移除其完整扫描报告；运行时仍完整分页。当前源码起始快照是 4,907 条来源记录，跨来源去重后为 4,904 条，MCP 实际为 3 条；100 是裁剪上限。生成文件与最终 TGZ 仍需对齐验收，不能把起始快照标成完整实时目录。
+`release-seed.mjs` 将发行用 MCP 起始快照限制为最多 100 条，并移除完整扫描报告；运行时仍完整分页。初始快照用于启动，不能标成完整实时目录。实际文件清单与校验值见构建生成的 `artifacts/releases/package-result.json`。
 
 ## 社区审核与跨来源退出
 
@@ -42,6 +42,19 @@ DSH public slots / session services
 Plugin／Theme 需要精确、版本一致的 `packageRef`；Skill 需要完整固定 bundle；MCP 需要完整固定 `serverDefinition`；Slash 必须绑定已知父项和命令；Prompt 保留原文及署名。Issue 可先缺少字段供人工审核，不能绕过公开入库合同。[目录格式](../catalog/README.md)
 
 `sources/removals.json` 经索引同步，只有审核社区来源能更新远端退出策略。策略在当前条目尚存时绑定稳定身份，也接受明确身份；在源快照和最终别名合并后全局执行，父插件退出也隐藏所属命令。缓存原子保存最后成功策略，网络失败和重启不会恢复已退出别名。目录、详情和后续获取拒绝已退出项，用户的安装与私人副本保留。UI 提供申请链接及设置中的已知策略列表。
+
+## 插件声明与安装边界
+
+| 声明或操作 | 职责 |
+|---|---|
+| `dsh.bundle: { "patch": "./cordis.patch.yml" }` | 向指定 profile 提供模块与配置组合 |
+| `dsh.client: { "platform": "web" }` | 声明前端加载信息，通常配合 `exports["./client"]` |
+| `dsh plugin --profile web add <package>` | 通过 pnpm 安装依赖并协调可用 bundle |
+| `dsh-plugin.json` | 标准组件声明，由已加载的 dsh-std 适配器发现和挂载 |
+
+后端插件可以没有前端；client 声明不代表完整 bundle，CLI 成功不代表加载和调用成功。四个官方模块可能已包含在宿主或预设中，不应重复安装。采用 dsh-std 是自愿的，其适配器提供原生 bundle，组件无需重复提供；同时声明两条自动发现入口的发布物会被市场拒绝，避免重复激活。
+
+市场按精确 npm 版本检查 SRI、实际声明、宿主／Node 范围及反向依赖。通过预览并明确执行后才调用官方 CLI，目标 profile 来自可信配置；具体命令和重启流程统一见[资源管理](EXTENSION_MANAGEMENT.md#npm-插件与主题)。
 
 ## 包管理与标准组件
 

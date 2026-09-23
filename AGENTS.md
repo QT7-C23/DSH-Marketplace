@@ -4,7 +4,7 @@
 
 This is the independent DSH Marketplace repository at `D:\Project\DSH`. `integration/` owns the pinned DSH host, React UI, native resource adapters, package builder and host acceptance. `community/` owns HTTP contracts, local SQLite counts and external metrics. `sources/` owns discovery, caches, identities, removals and verified downloads. `catalog/prompts/` and `catalog/resource-entries.json` are reviewed catalog inputs. `languages/` contains shared Chinese, English and Japanese messages. `prototype/` and `server/` retain the historical standalone prototype.
 
-Keep public usage, architecture and contributor documentation in `docs/`. Planning drafts and dated investigations stay local in ignored paths, including `docs/research/` and `.superpowers/`. Keep credentials, databases and runtime evidence in ignored `artifacts/`; public illustrations belong in `docs/images/`.
+Use `docs/README.md` as the public documentation index, `docs/i18n/` for overview translations and `integration/README.md` for development setup. Keep each procedure in one guide and link to it. Planning drafts and dated investigations stay local in ignored paths, including `docs/research/` and `.superpowers/`. Keep credentials, databases and runtime evidence in ignored `artifacts/`; public illustrations belong in `docs/images/`.
 
 ## Development and verification
 
