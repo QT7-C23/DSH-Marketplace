@@ -82,7 +82,7 @@ async function withHost(phase, check) {
     }
     assert(url, 'Standard host did not become ready');
     browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) });
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const page = await browser.newPage({ locale: 'zh-CN', viewport: { width: 1440, height: 1000 } });
     page.setDefaultTimeout(15000);
     const errors = []; page.on('pageerror', error => errors.push(error.message));
     for (const name of ['继续', '稍后配置']) await page.addLocatorHandler(page.getByRole('button', { name, exact: true }), button => button.click());

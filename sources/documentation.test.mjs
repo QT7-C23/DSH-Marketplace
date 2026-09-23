@@ -40,6 +40,36 @@ test('repository READMEs disclose unpinned versions and failures can retry witho
   await assert.rejects(manager.read('https://private.example', 1), /不可用/);
 });
 
+test('plugin and Skill READMEs use verified pinned API blobs after transient raw failures only', async () => {
+  const bytes = Buffer.from('# Original author README\n');
+  const sha = createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
+  for (const kind of ['plugin', 'skill']) {
+    const item = structuredClone(kind === 'plugin' ? seed.find(row => row.id === 'dsh').entries[0] : seed.find(row => row.id === 'skills').entries[0]);
+    const repository = kind === 'plugin' ? 'deepseek-ai/deepseek-harness' : item.bundle.repository;
+    const directory = kind === 'plugin' ? new URL(item.url).pathname.split('/').slice(5).join('/') : item.bundle.root;
+    const file = { name: 'README.md', path: directory + '/README.md', sha, size: bytes.length, type: 'file' };
+    if (kind === 'skill') item.bundle.files = [...item.bundle.files.filter(row => !/README/i.test(row.path)), file];
+    let rawFailure = Object.assign(Error('fetch failed'), { cause: { code: 'UND_ERR_CONNECT_TIMEOUT' } });
+    let delivered = bytes;
+    const calls = [];
+    const options = { read: async () => [file], download: async url => {
+      calls.push(url);
+      if (url.startsWith('https://raw.githubusercontent.com/')) throw rawFailure;
+      assert.equal(url, `https://api.github.com/repos/${repository}/git/blobs/${sha}`);
+      return Buffer.from(JSON.stringify({ encoding: 'base64', content: delivered.toString('base64') }));
+    } };
+    const result = await readDocumentation(item, options);
+    assert.equal(result.files.find(row => row.name === 'README.md').body, bytes.toString());
+    assert.equal(calls.length, 2);
+    delivered = Buffer.from('Changed upstream bytes');
+    await assert.rejects(readDocumentation(item, options), /校验/);
+    rawFailure = Object.assign(Error('Forbidden'), { status: 403 });
+    calls.length = 0;
+    await assert.rejects(readDocumentation(item, options), error => error.status === 403);
+    assert.equal(calls.length, 1, 'HTTP rejection cannot be bypassed through alternate delivery');
+  }
+});
+
 test('the document download limit cannot discard Chinese README behind other languages', async () => {
   const item = seed.find(row => row.id === 'dsh').entries[0];
   const directory = new URL(item.url).pathname.split('/').slice(5).join('/');

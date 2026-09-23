@@ -15,7 +15,7 @@ import { unzipSync, gunzipSync } from 'fflate';
 async function openLab(t) {
   const url = (await readFile(path.join(lab, 'url.txt'), 'utf8')).trim();
   const browser = await chromium.launch({ headless: true, ...(process.platform === 'win32' ? { channel: 'msedge' } : {}) });
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const page = await browser.newPage({ locale: 'zh-CN', viewport: { width: 1440, height: 1000 } });
   const errors = [];
   page.setDefaultTimeout(10000);
   t.after(async () => {

@@ -1,6 +1,6 @@
 import { CommunityError } from '../community/contracts.mjs';
 import { repositoryOf } from '../community/metrics.mjs';
-import { readUpstream, readBytes, verifySkillBytes } from './request.mjs';
+import { readUpstream, readBytes, readPinnedSkillBytes as readPinnedDocumentBytes } from './request.mjs';
 import { readerDocuments } from './document-language.mjs';
 
 const oid = value => typeof value === 'string' && /^[a-f0-9]{40}$/.test(value);
@@ -22,7 +22,7 @@ export async function readDocumentation(item, { read = readUpstream, download = 
     const files = [{ name: 'SKILL.md', body: item.body, url: item.url, commit: bundle.commit }];
     const candidates = bundle.files.filter(file => file.path.startsWith(bundle.root + '/') && !file.path.slice(bundle.root.length + 1).includes('/')).map(file => ({ ...file, name: file.path.slice(bundle.root.length + 1) }));
     files.push(...await readDocuments(readerDocuments(candidates), async file => {
-      const body = decode(verifySkillBytes(file, await download(`https://raw.githubusercontent.com/${bundle.repository}/${bundle.commit}/${file.path}`)));
+      const body = decode(await readPinnedDocumentBytes(`https://raw.githubusercontent.com/${bundle.repository}/${bundle.commit}/${file.path}`, file, bundle, download));
       return { name: file.path.split('/').at(-1), body, url: `https://github.com/${bundle.repository}/blob/${bundle.commit}/${file.path}`, commit: bundle.commit };
     }));
     return { ...result, state: 'available', files };
@@ -50,7 +50,7 @@ export async function readDocumentation(item, { read = readUpstream, download = 
     const expected = [directory, file.name].filter(Boolean).join('/');
     if (file.path !== expected || !safePath(file.path) || !oid(file.sha) || !Number.isInteger(file.size) || file.size < 1 || file.size > 512000) throw Error('文档文件信息不完整或过大');
     const encoded = file.path.split('/').map(encodeURIComponent).join('/');
-    const body = decode(verifySkillBytes(file, await download(`https://raw.githubusercontent.com/${repository}/${commit}/${encoded}`)));
+    const body = decode(await readPinnedDocumentBytes(`https://raw.githubusercontent.com/${repository}/${commit}/${encoded}`, file, { repository, commit }, download));
     return { name: file.name, body, url: `https://github.com/${repository}/blob/${commit}/${encoded}`, commit };
   });
   return { ...result, state: result.files.length ? 'available' : 'missing' };
