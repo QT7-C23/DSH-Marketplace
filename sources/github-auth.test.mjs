@@ -4,6 +4,8 @@ import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { GitHubCredentials, validateGitHubToken } from './github-credentials.mjs';
 import { createGitHubFetch, GitHubConnection } from './github-auth.mjs';
 import { createHandler } from '../community/http.mjs';
@@ -70,6 +72,26 @@ test('Windows credentials survive restart encrypted; corrupt storage fails close
     await assert.rejects(new GitHubCredentials(file).read(), error => !error.message.includes('broken'));
     await store.remove(); assert.equal(await store.read(), null);
   } finally { await rm(folder, { recursive: true, force: true }); }
+});
+
+test('Windows credential protection tolerates a cold helper startup and remains encrypted', { skip: process.platform !== 'win32' }, async t => {
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'dsh-github-cold-'));
+  const file = path.join(folder, 'github.dpapi');
+  const helper = path.join(folder, 'delayed-secret.ps1');
+  const original = childProcess.execFile;
+  const script = await readFile(new URL('../scripts/github-secret.ps1', import.meta.url), 'utf8');
+  await writeFile(helper, script.replace("$ErrorActionPreference = 'Stop'", "$ErrorActionPreference = 'Stop'\nStart-Sleep -Milliseconds 10500"));
+  const intercepted = t.mock.method(childProcess, 'execFile', (executable, args, options, callback) => original(executable, args.map(value => value.endsWith('github-secret.ps1') ? helper : value), options, callback));
+  syncBuiltinESMExports();
+  try {
+    await new GitHubCredentials(file).save(token);
+    assert(!(await readFile(file, 'utf8')).includes(token));
+    intercepted.mock.restore(); syncBuiltinESMExports();
+    assert.equal(await new GitHubCredentials(file).read(), token);
+  } finally {
+    intercepted.mock.restore(); syncBuiltinESMExports();
+    await rm(folder, { recursive: true, force: true });
+  }
 });
 
 test('save validates first; public status excludes token; rejected replacement preserves credential', async () => {

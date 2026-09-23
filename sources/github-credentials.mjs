@@ -16,7 +16,7 @@ function crypt(mode, input) {
   const executable = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe');
   const script = fileURLToPath(new URL('../scripts/github-secret.ps1', import.meta.url));
   return new Promise((resolve, reject) => {
-    const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 10000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout) => {
+    const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 30000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout) => {
       if (error) reject(new CommunityError(503, '无法读取或保存 GitHub 令牌，请重新配置'));
       else resolve(stdout);
     });

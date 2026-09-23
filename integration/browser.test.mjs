@@ -259,9 +259,14 @@ async function downloadResource(page, buttonName) {
 }
 
 async function resumeSkillChecks(page) {
+  const response = page.waitForResponse(response => new URL(response.url()).pathname === '/api/community/sources' && response.request().postDataJSON()?.action === 'setAutomatic');
   await page.getByRole('region', { name: 'Anthropic Skills' }).getByRole('button', { name: '恢复自动检查', exact: true }).click();
-  await page.getByText('已恢复自动检查', { exact: true }).waitFor();
+  const result = await response;
+  assert.equal(result.status(), 200);
+  const source = (await result.json()).find(row => row.id === 'skills');
+  if (!source.syncing && source.state !== 'fresh') assert.fail(source.error || source.state);
   const row = page.getByRole('region', { name: 'Anthropic Skills' });
+  await row.getByRole('button', { name: '暂停自动检查', exact: true }).waitFor();
   const status = row.getByRole('status').filter({ hasText: /^(已更新|保留上次目录|读取失败)$/ });
   await status.waitFor({ timeout: 45000 });
   assert.equal(await status.innerText(), '已更新', (await row.getByRole('alert').allTextContents()).join(' '));
@@ -325,7 +330,7 @@ test('market metrics remain visible across types, count actual GitHub downloads 
     'anthropics/skills': { count: null, checkedAt: '', state: 'unavailable' },
     'modelcontextprotocol/servers': { count: 0, checkedAt: '2026-09-13T00:00:00.000Z', state: 'fresh' },
   };
-  await page.route('**/api/community/stars*', route => route.fulfill({ json: fixture }));
+  await page.route('**/api/community/stars*', route => route.fulfill({ headers: { 'x-test-star-state': fixture['f/prompts.chat'].state }, json: fixture }));
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
   const code = page.getByRole('button', { name: '查看 代码审查助手', exact: true });
   await code.getByText('仓库 Star 1.2万', { exact: true }).waitFor();
@@ -365,9 +370,13 @@ test('market metrics remain visible across types, count actual GitHub downloads 
   await page.getByText('我的评分 4/5', { exact: true }).waitFor();
   await page.reload();
   await page.getByRole('button', { name: '扩展市场', exact: true }).click();
+  await page.locator('.community-market .search-field input').fill('代码审查助手');
   await page.getByRole('button', { name: '查看 代码审查助手', exact: true }).getByText('已收藏', { exact: true }).waitFor();
+  await code.getByText('仓库 Star 1.2万', { exact: true }).waitFor();
   fixture['f/prompts.chat'].state = 'stale';
+  const refreshedStars = page.waitForResponse(response => response.url().includes('/api/community/stars') && response.headers()['x-test-star-state'] === 'stale');
   await page.getByRole('button', { name: '刷新市场', exact: true }).click();
+  assert.equal((await (await refreshedStars).json())['f/prompts.chat'].state, 'stale');
   await page.getByRole('button', { name: '查看 代码审查助手', exact: true }).getByText('仓库 Star 1.2万 · 缓存', { exact: true }).waitFor();
   await page.getByRole('button', { name: '收起侧边栏', exact: true }).click();
   await page.getByRole('button', { name: '打开侧边栏', exact: true }).waitFor();
@@ -975,6 +984,7 @@ test('disabling and re-enabling with page refresh removes and restores its UI wi
     assert.equal(await page.getByRole('button', { name: '周报使用示例', exact: true }).count(), 0);
   } finally { await setPlugin(); }
   await reloadUntilPlugin(page, true);
+  await page.getByRole('button', { name: '周报使用示例', exact: true }).waitFor();
   assert.equal(await page.getByRole('button', { name: '扩展市场', exact: true }).count(), 1);
   assert.equal(await page.getByRole('button', { name: '周报使用示例', exact: true }).count(), 1);
 });
