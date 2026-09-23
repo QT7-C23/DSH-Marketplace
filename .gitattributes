@@ -1,2 +1,4 @@
 * text=auto eol=lf
 .githooks/* text eol=lf
+# Preserve upstream license bytes, including their original line endings.
+sources/licenses/* -text whitespace=blank-at-eol,blank-at-eof,space-before-tab,cr-at-eol
