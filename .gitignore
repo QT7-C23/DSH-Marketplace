@@ -1,3 +1,11 @@
 node_modules/
 artifacts/
 integration/plugin/client.js
+
+# Local planning and research notes are not distribution documentation.
+.superpowers/
+docs/research/
+docs/PRODUCT_PLAN.md
+docs/FIRST_RELEASE_FLOWS.md
+docs/WEB_CATALOG_PROPOSAL.md
+docs/design/DESIGN_CONTEXT.md

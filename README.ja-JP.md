@@ -96,9 +96,9 @@ npm run package
 
 ## 開発
 
-`npm run verify` は静的規則、カタログ、動作、型、ビルド、ホスト検証の共通入口です。`npm run verify:package` は公式 TGZ の導入・削除を確認します。[Windows CI](.github/workflows/verify.yml) と [pre-commit hook](.githooks/pre-commit) は同じゲートを実行します。hook は `git config core.hooksPath .githooks` で有効にします。設定は追加済みですが、ローカル hook の有効化とオンライン CI の成功は未確認です。
+`npm run verify` は静的規則、カタログ、動作、型、ビルド、ホスト検証の共通入口です。`npm run verify:package` は公式 TGZ の導入・削除を確認します。[Windows CI](.github/workflows/verify.yml) と [pre-commit hook](.githooks/pre-commit) は同じゲートを実行します。hook は `git config core.hooksPath .githooks` で有効にします。hook は各ローカルリポジトリで有効にしてください。現在の CI 結果は最新のワークフロー実行で確認できます。
 
-[アーキテクチャ](docs/ARCHITECTURE.md) · [リポジトリ規則](AGENTS.md) · [配布元](sources/README.md) · [製品計画](docs/PRODUCT_PLAN.md)
+[アーキテクチャ](docs/ARCHITECTURE.md) · [リポジトリ規則](AGENTS.md) · [配布元](sources/README.md) · [リソース管理](docs/EXTENSION_MANAGEMENT.md)
 
 本製品は DSH 内で動作します。他のホスト版、より広い第三者構成、自動復旧は現在の検証範囲外です。ローカルモデルの取得と Cookbook は保留しています。
 

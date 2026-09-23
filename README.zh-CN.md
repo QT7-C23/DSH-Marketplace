@@ -96,9 +96,9 @@ npm run package
 
 ## 开发
 
-`npm run verify` 是静态规则、目录、行为、类型、构建和宿主验收的统一入口；`npm run verify:package` 检查官方 TGZ 安装与卸载。[Windows CI](.github/workflows/verify.yml) 和 [pre-commit hook](.githooks/pre-commit) 调用同一门禁，启用 hook 的命令为 `git config core.hooksPath .githooks`。配置已加入，本地 hook 启用情况与线上 CI 成功结果尚未确认。
+`npm run verify` 是静态规则、目录、行为、类型、构建和宿主验收的统一入口；`npm run verify:package` 检查官方 TGZ 安装与卸载。[Windows CI](.github/workflows/verify.yml) 和 [pre-commit hook](.githooks/pre-commit) 调用同一门禁，启用 hook 的命令为 `git config core.hooksPath .githooks`。hook 需在各本地仓库单独启用；线上验证状态以最新工作流运行为准。
 
-[架构](docs/ARCHITECTURE.md) · [仓库规范](AGENTS.md) · [来源](sources/README.md) · [产品方案](docs/PRODUCT_PLAN.md)
+[架构](docs/ARCHITECTURE.md) · [仓库规范](AGENTS.md) · [来源](sources/README.md) · [资源管理](docs/EXTENSION_MANAGEMENT.md)
 
 产品运行在 DSH 内。其他宿主版本、更广泛第三方组合和自动恢复不在当前验证覆盖内；本地模型下载与 Cookbook 继续暂缓。
 

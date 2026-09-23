@@ -96,9 +96,9 @@ Authors, maintainers and rights holders can request opt-out through the [removal
 
 ## Development
 
-`npm run verify` is the shared gate for static/catalog checks, behavioral tests, types, builds and host acceptance. `npm run verify:package` exercises official TGZ installation and removal. The [Windows CI workflow](.github/workflows/verify.yml) and [pre-commit hook](.githooks/pre-commit) invoke the same gate; activate the hook with `git config core.hooksPath .githooks`. Configuration is present; local hook activation and online CI results are not yet confirmed.
+`npm run verify` is the shared gate for static/catalog checks, behavioral tests, types, builds and host acceptance. `npm run verify:package` exercises official TGZ installation and removal. The [Windows CI workflow](.github/workflows/verify.yml) and [pre-commit hook](.githooks/pre-commit) invoke the same gate; activate the hook with `git config core.hooksPath .githooks`. Hook activation is local to each checkout; check the latest workflow run for the current CI result.
 
-[Architecture](docs/ARCHITECTURE.md) · [Repository guidelines](AGENTS.md) · [Sources](sources/README.md) · [Product plan](docs/PRODUCT_PLAN.md)
+[Architecture](docs/ARCHITECTURE.md) · [Repository guidelines](AGENTS.md) · [Sources](sources/README.md) · [Resource management](docs/EXTENSION_MANAGEMENT.md)
 
 The product runs inside DSH. Other host versions, broader third-party combinations and automatic recovery remain outside verified coverage. Local model downloads and Cookbook are deferred.
 
