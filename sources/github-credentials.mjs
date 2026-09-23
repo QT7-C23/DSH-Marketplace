@@ -18,8 +18,13 @@ async function crypt(mode, input) {
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       return await new Promise((resolve, reject) => {
-        const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 30000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout) => {
-          if (error) reject(error);
+        const child = execFile(executable, ['-NoLogo', '-NoProfile', '-NonInteractive', '-File', script, mode], { windowsHide: true, timeout: 30000, maxBuffer: 65536, encoding: 'utf8' }, (error, stdout, stderr) => {
+          if (error) {
+            const stage = [...stderr.matchAll(/^DSH_SECRET_STAGE:(init|input|crypt|done)\r?$/gm)].at(-1)?.[1] || 'startup';
+            const exit = Number.isInteger(error.code) ? error.code : ['ENOENT', 'EACCES', 'ENOBUFS'].includes(error.code) ? error.code : 'process-error';
+            console.warn('GitHub credential helper failed:', JSON.stringify({ mode, stage, exit, timeout: Boolean(error.killed && error.signal === 'SIGTERM') }));
+            reject(error);
+          }
           else resolve(stdout);
         });
         child.stdin.on('error', () => {});

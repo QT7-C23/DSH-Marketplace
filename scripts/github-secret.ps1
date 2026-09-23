@@ -1,9 +1,12 @@
 param([ValidateSet('protect', 'unprotect')][string]$Mode)
 $ErrorActionPreference = 'Stop'
+[Console]::Error.WriteLine('DSH_SECRET_STAGE:init')
 [Console]::InputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 Add-Type -AssemblyName System.Security
+[Console]::Error.WriteLine('DSH_SECRET_STAGE:input')
 $secretInput = [Console]::In.ReadToEnd()
+[Console]::Error.WriteLine('DSH_SECRET_STAGE:crypt')
 try {
   if ($Mode -eq 'protect') {
     $secretBytes = [Text.Encoding]::UTF8.GetBytes($secretInput)
@@ -16,3 +19,4 @@ try {
   }
 } catch { exit 1 }
 finally { if ($secretBytes) { [Array]::Clear($secretBytes, 0, $secretBytes.Length) } }
+[Console]::Error.WriteLine('DSH_SECRET_STAGE:done')

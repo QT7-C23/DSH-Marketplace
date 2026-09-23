@@ -27,7 +27,7 @@ const stop = () => host.kill();
 process.once('SIGINT', stop);
 process.once('SIGTERM', stop);
 try {
-  let ready = false;
+  let ready = false, cookie = '';
   for (let attempt = 0; attempt < 240; attempt++) {
     if (host.exitCode !== null) throw new Error('DSH exited before becoming ready');
     const url = await readFile(path.join(lab, 'url.txt'), 'utf8').catch(error => { if (error.code === 'ENOENT') return ''; throw error; });
@@ -35,12 +35,21 @@ try {
       try {
         const response = await fetch(url.trim(), { redirect: 'manual', signal: AbortSignal.timeout(1000) });
         ready = response.ok || ([302, 303].includes(response.status) && response.headers.get('location') === '/');
+        if (ready) cookie = response.headers.getSetCookie().map(value => value.split(';')[0]).join('; ');
       } catch { /* Server is still starting. */ }
       if (ready) break;
     }
     await delay(250);
   }
-  if (!ready) throw new Error('DSH did not become ready within the startup deadline');
+  if (!ready || !cookie) throw new Error('DSH did not become ready within the startup deadline');
+  const hostUrl = new URL((await readFile(path.join(lab, 'url.txt'), 'utf8')).trim());
+  const credentialResponse = await fetch(new URL('/api/community/github/read', hostUrl), {
+    headers: { cookie }, signal: AbortSignal.timeout(65000),
+  });
+  if (!credentialResponse.ok) throw new Error(`Host credential check returned HTTP ${credentialResponse.status}`);
+  const credentialStatus = await credentialResponse.json();
+  if (credentialStatus.state === 'unreadable') throw new Error('The actual host cannot decrypt its configured GitHub credential');
+  console.log(`Host GitHub credential check passed: ${credentialStatus.configured ? 'configured' : 'anonymous'}.`);
   console.log('Running browser experiments against the actual DSH host.');
   const filter = process.argv[2] ? ['--test-name-pattern', process.argv[2]] : [];
   await completed(spawn(process.execPath, ['--test', '--test-reporter=tap', ...filter, 'integration/browser.test.mjs'], { cwd: root, env: process.env, stdio: 'inherit', windowsHide: true, timeout: 600000 }));

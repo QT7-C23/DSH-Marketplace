@@ -99,6 +99,8 @@ test('Windows credential helpers retry one killed process, preserve saved data a
   const file = path.join(folder, 'github.dpapi');
   const original = childProcess.execFile;
   let failures = 1, calls = 0;
+  const diagnostics = [];
+  t.mock.method(console, 'warn', (...values) => diagnostics.push(values));
   const intercepted = t.mock.method(childProcess, 'execFile', (executable, args, options, callback) => {
     calls++;
     return original(executable, args, { ...options, timeout: failures-- > 0 ? 1 : options.timeout }, callback);
@@ -120,6 +122,13 @@ test('Windows credential helpers retry one killed process, preserve saved data a
     await writeFile(file, '{"schema":1,"protection":"windows-dpapi","value":"broken"}');
     await assert.rejects(new GitHubCredentials(file).read(), error => error.status === 503 && !error.message.includes('broken'));
     assert.equal(calls, 1, 'Corrupt input is not a transient process failure');
+    assert(diagnostics.length > 0);
+    assert(!JSON.stringify(diagnostics).includes(token));
+    assert(!JSON.stringify(diagnostics).includes('broken'));
+    for (const [message, data] of diagnostics) {
+      assert.equal(message, 'GitHub credential helper failed:');
+      assert.deepEqual(Object.keys(JSON.parse(data)).sort(), ['exit', 'mode', 'stage', 'timeout']);
+    }
   } finally {
     intercepted.mock.restore(); syncBuiltinESMExports();
     await rm(folder, { recursive: true, force: true });
